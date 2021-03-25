@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+  <meta name="cesium-sandcastle-labels" content="Showcases, 3D Tiles">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/izimodal/1.5.1/css/iziModal.min.css">
+  <title>3D都市モデルマップ</title>
+  <script src="./../Build/Cesium/Cesium.js"></script>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js" type="text/javascript"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/izimodal/1.5.1/js/iziModal.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.5.0/knockout-min.js"></script>
+  <script type="text/javascript" src="./../Apps/Sandcastle/Sandcastle-header.js"></script>
+  <script type="text/javascript" src="./../ThirdParty/requirejs-2.3.6/require.js"></script>
+  <script type="text/javascript" src="./../ThirdParty/Cesium-JapanGSI-master/JapanGSITerrainProvider.js"></script>
+  <style>
+    @import url(./../Apps/Sandcastle/templates/bucket.css);
+    @import url(./../Build/Cesium/Widgets/widgets.css);
+  </style>
+  <link rel="stylesheet" href="./css/design_3_200727_menu.css">
+</head>
+<body class="sandcastle-loading" data-sandcastle-bucket="bucket-requirejs.html">
+  <div id="cesiumContainer" class="fullSize"></div>
+  <div id="loadingOverlay"><h1>Loading...</h1></div>
+  <div id="toolbar">
+    <details open>
+      <summary class="menu_summary">データセット</summary>
+      <table>
+        <tbody id="layerList" data-bind="foreach: contents">
+          <tr class="layer">
+            <td></td>
+            <td><span data-bind="text: display_name"></span>　<button id="btn-layer-setting" class="btn-text-3d layer-setting" data-bind="value: $index">三</button>
+            </td>
+          </tr>
+        </tbody>
+        <tbody>
+          <tr>
+            <td></td>
+            <td>
+              <button class="btn-text-3d" data-izimodal-open="#dataAdditionModal" data-izimodal-transitionin="fadeInLeft">＋データセットを追加</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </details>
+    <details open>
+      <summary class="menu_summary">データセット環境　</summary>
+      <table>
+        <tbody data-bind="foreach: layers">
+          <tr>
+            <td>背景図</td>
+            <td>
+              <span data-bind="text: name, visible: !$parent.isSelectableLayer($data)"></span>
+              <select class="menu_select" data-bind="visible: $parent.isSelectableLayer($data), options: $parent.baseLayers, optionsText: 'name', value: $parent.selectedLayer"></select>
+            </td>
+          </tr>
+        </tbody>
+        <tbody>
+          <tr>
+            <td>地形</td>
+            <td>
+              <select id="select3" name="select3" class="menu_select" data-bind="value: selected_terrain" size="1"><option value="2">2D</option><option value="30">3D(地形を図形の下に描画)</option><option value="31">3D</option></select>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </details>
+  </div>
+  
+  <div id="dataAdditionModal" class="iziModal" data-izimodal-title="データセットの追加" data-izimodal-transitionOut="fadeOutLeft">
+    <table class="iziModal-TBL dataList">
+      <tbody>
+        <tr>
+          <th>ID</th>
+          <th>データセット名</th>
+          <th>フォーマット</th>
+          <th>追加</th>
+        </tr>
+      </tbody>
+      <tbody data-bind="foreach: dataLists">
+        <tr>
+          <td data-bind="text: file_id"></td>
+          <td style="text-align:left;"><span data-bind="text: display_name"></span></td>
+          <td><span data-bind="text: file_format"></span></td>
+          <td><button class="btn-text-3d" data-bind="click: ksk3d_datasetAdd.bind($data)" >追加</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="ksk3d_text_format" class="iziModal-footer"></div>
+  </div>
+  
+  <div id="layerSettingModal1" class="iziModal iziModal_group" data-izimodal-title="概要">
+    <table class="layerSettingTbl-1">
+      <tbody>
+        <tr><td>名前　</td><td><span id="ls_display_name" readonly></span></td></tr>
+        <tr><td height="40"></td><td>
+        <tr><td>データセットID　</td><td><span id="ls_file_id" readonly></span></td></tr>
+        <tr><td height="5"></td><td>
+        <tr><td>フォーマット　</td><td><span id="ls_file_format" readonly></span></td></tr>
+        <tr><td height="40"></td><td>
+        <tr><td>操作　</td><td>
+          <button id="ls_zoomToDataset" class="btn-text-3d" onclick="ksk3d_zoomToDataset();">移動</button>
+          <span>　　</span>
+          <button id="ls_datasetRemove" class="btn-text-3d" onclick="ksk3d_datasetRemove();">削除</button>
+        </td></tr>
+        <tr><td height="20"></td><td>
+      </tbody>
+    </table>
+    <p align="right" style="margin-right:20px">
+      <input type="button" style="font-size:14px;" class="btn-text-3d" onclick="iziModal_group_ok();" value="OK">
+      &emsp;
+      <input type="button" style="font-size:12px;" class="btn-text-3d" onclick="iziModal_group_cancel();" value="キャンセル">
+    </p>
+  </div>
+
+  <div id="layerSettingModal23" class="iziModal open-iframe" data-izimodal-title="スタイル">
+    <p align="right" style="margin-right:20px">
+      <input type="button" style="font-size:14px;" class="btn-text-3d" onclick="iziModal_group_ok('layerSettingModal23');" value="描画を更新して閉じる">
+    </p>
+  </div>
+
+  <script type="text/javascript" src="./js/usvpro-3d-city-management.js"></script>
+  <script type="text/javascript" src="./js/1.71.14.js"></script>
+  <script type="text/javascript" src="./js/modalDB.js"></script>
+  <script type="text/javascript" src="./js/modal_layerSetting.js"></script>
+</body>
+</html>

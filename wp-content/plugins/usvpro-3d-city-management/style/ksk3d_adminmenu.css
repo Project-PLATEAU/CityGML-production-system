@@ -1,0 +1,48 @@
+.adminmenu_table1{
+  background-color: #FEFEFE;
+  border-collapse: collapse;
+  margin-bottom: 5px;
+  width: 95%;
+  min-width: 210px;
+}
+.adminmenu_table1 th,
+.adminmenu_table1 td{
+  border: solid 1px;
+  padding: 10px 5px 10px 5px;
+  height: 20px;
+}
+.adminmenu_table1 th:nth-of-type(1){
+  width: 5%;
+  text-align: center;
+}
+.adminmenu_table1 th:nth-of-type(2){
+  width: 15%;
+  min-width: 10px;
+}
+.adminmenu_table1 th:nth-of-type(3){
+  width: 80%;
+}
+.adminmenu_table2{
+  background-color: #FEFEFE;
+  border-collapse: collapse;
+  width: 95%;
+  min-width: 210px;
+}
+.adminmenu_table2 th,
+.adminmenu_table2 td{
+  border: solid 1px;
+  padding: 10px 5px 10px 5px;
+  height: 20px;
+}
+.adminmenu_table2 th:nth-of-type(1){
+  width: 20%;
+}
+.adminmenu_table2 th:nth-of-type(2){
+  width: 80%;
+  min-width: 10px;
+}
+.adminmenu_table2 th:nth-of-type(3){
+}
+
+
+

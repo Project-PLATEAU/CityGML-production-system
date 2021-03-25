@@ -1,0 +1,29 @@
+.ksk3d_pjt_ck_visually_pre{
+  overflow-x: auto;
+}
+
+.ksk3d_pjt_ck_visually_table{
+  width: 650px;
+  line-height: 20px;
+}
+
+.ksk3d_pjt_ck_visually_table th{
+  text-align: center;
+}
+.ksk3d_pjt_ck_visually_table th:nth-of-type(1),
+.ksk3d_pjt_ck_visually_table td:nth-of-type(1){
+  width: 130px;
+}
+.ksk3d_pjt_ck_visually_table th:nth-of-type(2),
+.ksk3d_pjt_ck_visually_table td:nth-of-type(2){
+  width: 345px;
+}
+.ksk3d_pjt_ck_visually_table th:nth-of-type(3),
+.ksk3d_pjt_ck_visually_table td:nth-of-type(3){
+  text-align: center;
+  width: 175px;
+}
+
+.ksk3d_pjt_ck_visually_table td input{
+	width: 150px;
+}
