@@ -4,7 +4,13 @@
 
 3D都市モデルの構築等に関する品質管理（主題属性正確度検証）、データ入出力、オープンデータ化を支援するための機能を提供するWordPressのプラグインです。
 
-本ソフトウェアは、国土交通省の[Project PLATEAU](https://www.mlit.go.jp/plateau/)で開発され、3D都市モデルの品質管理支援に用いたWebポータルシステムです。対応データ形式は、内閣府地方創生推進事務局が定めた[i-都市再生技術仕様案 v1.4 (iｰUR 1.4)](https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/)に従い拡張された[OGC CityGML 2.0](https://www.ogc.org/standards/citygml)形式です。
+本ソフトウェアは、国土交通省の[Project PLATEAU](https://www.mlit.go.jp/plateau/)で開発され、3D都市モデルの品質管理支援に用いたWebポータルシステムです。対応データ形式は、内閣府地方創生推進事務局が定めた[i-都市再生技術仕様案 v1.4 (i-UR 1.4)](https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/)に従い拡張された[OGC CityGML 2.0](https://www.ogc.org/standards/citygml)形式です。
+
+ただし、i-UR1.4は、名前空間及びXMLSchemaファイルの所在が変更されたことに伴い、i-UR1.5に改定されました。  
+本ソフトウェア内における名前空間及びXMLSchemaファイルの所在は改定前の記述となっていますので、ご注意ください。  
+以下に示す2点を実施し、改定後の記述に更新いただくことで、引き続きご利用いただけます。
+* http://www.kantei.go.jp/jp/singi/ を https://www.chisou.go.jp/ に更新する。
+* i-URの版を、1.4 から 1.5 に更新する。
 
 ## 動作環境、前提ソフトウェア
 
