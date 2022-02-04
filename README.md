@@ -6,11 +6,38 @@
 
 本ソフトウェアは、国土交通省の[Project PLATEAU](https://www.mlit.go.jp/plateau/)で開発され、3D都市モデルの品質管理支援に用いたWebポータルシステムです。対応データ形式は、内閣府地方創生推進事務局が定めた[i-都市再生技術仕様案 v1.4 (i-UR 1.4)](https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/)に従い拡張された[OGC CityGML 2.0](https://www.ogc.org/standards/citygml)形式です。
 
-ただし、i-UR1.4は、名前空間及びXMLSchemaファイルの所在が変更されたことに伴い、i-UR1.5に改定されました。  
-本ソフトウェア内における名前空間及びXMLSchemaファイルの所在は改定前の記述となっていますので、ご注意ください。  
-以下に示す2点を実施し、改定後の記述に更新いただくことで、引き続きご利用いただけます。
-* http://www.kantei.go.jp/jp/singi/ を https://www.chisou.go.jp/ に更新する。
-* i-URの版を、1.4 から 1.5 に更新する。
+**ただし、i-UR1.4はi-UR1.5に改定されました。これに伴い、URLが変更されました。**
+
+そのため、本ソフトウェアの利用にあたり、ソフトウェアに記述された旧URLを、新しいURLに更新する必要があります。
+
+具体的には、ソフトウェアに含まれる、以下の2つのファイルに記載された名前空間を新しいURLに更新してください。
+
+- 対象ファイル（4ファイル）
+
+|ファイルが格納されているフォルダ|ファイル名|
+| - | - |
+|[wp-content/plugins/usvpro-3d-city-management/storage/citygml/](https://github.com/Project-PLATEAU/CityGML-production-system/tree/main/wp-content/plugins/usvpro-3d-city-management/storage/citygml)|<p>bldg\_building.gml</p><p>building.gml</p><p>building\_lod1MultiSurface.gml</p><p>gen\_GenericCityObject.gml</p>|
+
+### 更新（テキスト置換）の対象（名前空間、schemaLocation）
+
+- 名前空間
+
+|更新前のURL|新しいURL|
+| - | - |
+|`http://www.kantei.go.jp/jp/singi/tiiki/toshisaisei/itoshisaisei/iur/uro/1.4`|https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/uro/1.5|
+|`http://www.kantei.go.jp/jp/singi/tiiki/toshisaisei/itoshisaisei/iur/urf/1.4`|https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/urf/1.5|
+|`http://www.kantei.go.jp/jp/singi/tiiki/toshisaisei/itoshisaisei/iur/urg/1.4`|https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/urg/1.5|
+|`http://www.kantei.go.jp/jp/singi/tiiki/toshisaisei/itoshisaisei/iur/urt/1.4`|https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/urt/1.5|
+
+- schemaLocation
+
+|旧URL（i-UR1.4のURL）|新しいURL（i-UR1.5のURL）|
+| - | - |
+|`http://www.kantei.go.jp/jp/singi/tiiki/toshisaisei/itoshisaisei/iur/schemas/uro/1.4/urbanObject.xsd`|https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/schemas/uro/1.5/urbanObject.xsd|
+|`http://www.kantei.go.jp/jp/singi/tiiki/toshisaisei/itoshisaisei/iur/schemas/urf/1.4/urbanFunction.xsd`|https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/schemas/uro/1.5/urbanFunction.xsd|
+|`http://www.kantei.go.jp/jp/singi/tiiki/toshisaisei/itoshisaisei/iur/schemas/urg/1.4/statisticalGrid.xsd`|https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/schemas/urg/1.5/statisticalGrid.xsd|
+|`http://www.kantei.go.jp/jp/singi/tiiki/toshisaisei/itoshisaisei/iur/schemas/urg/1.4/publicTransit.xsd`|https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/schemas/urg/1.5/publicTransit.xsd|
+
 
 ## 動作環境、前提ソフトウェア
 
