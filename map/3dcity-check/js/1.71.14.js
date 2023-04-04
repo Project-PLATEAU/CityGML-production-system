@@ -614,6 +614,8 @@ function ksk3d_contentAdd(data) {
 }
 function ksk3d_datasetAdd(data) {
 console.log("ksk3d_datasetAdd");
+console.log(data);
+
   $.ajax({
     url:'./php/insert_layer.php', 
     type:'POST',

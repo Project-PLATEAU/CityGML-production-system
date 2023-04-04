@@ -16,6 +16,7 @@ class ksk3d_functions_zip{
       );
       //201129確認
       foreach($iterator as $f => $info){
+        ksk3d_console_log("path: ".$f);
         if ($info->isFile()){
           if (preg_match(ksk3d_functions_pjt::$pattern['3dcitymodel_zip'],$f)==1){
             ksk3d_zip_extractTo($f);

@@ -58,11 +58,12 @@ EOL
         }
         $rslt_err_fileall += count(glob($row->{'file_path'}."/".$row->{'file_name'}));
         
+        // 不要な検査を除去し、検査名変更適用
         if (preg_match('/L05/i' ,$ck_item)){
           $rslt_err_mes_tmp .= "空間座標参照系のURIが、製品仕様書に示された二つのURIのいずれとも合致しない箇所がありました。空間座標参照系を製品仕様書に示されたURIと一致するように見直してください。<br>\n";
         } else if (preg_match('/L06/i' ,$ck_item)){
           $rslt_err_mes_tmp .= "boundedByにより指定された、緯度、経度及び標高の下限値及び上限値を超える座標値がありました。座標値の修正、またはboundedByによる緯度、経度及び標高の下限値、上限値を見直してください。<br>\n";
-        } else if (preg_match('/L20|T05|T06|T07/i' ,$ck_item)){
+        } else if (preg_match('/T03|T-bldg-02/i' ,$ck_item)){ 
           $rslt_err_mes_tmp .= "次の確認事項が見つかりました。<br>\n";
         }
 
@@ -115,7 +116,9 @@ EOL
                   }
                 }
               }
-              if (isset($ck_result[3])){$takeover = $ck_result[3];}
+              if (isset($ck_result[3])){
+                $takeover = $ck_result[3];
+              }
             }
           }
         }
@@ -124,18 +127,26 @@ EOL
           $rslt_mes .= "検査対象のうち、次を対象外にしました。<br>\n";
           if (preg_match('/C01/i' ,$ck_item)){
             $rslt_mes .= $rslt_mes_ct[0]."ファイルについて、gml::idは見つかりませんでした。<br>\n";
-          } else if (preg_match('/L20/i' ,$ck_item)){
+          /*} else if (preg_match('/L20/i' ,$ck_item)){
             if (!empty($rslt_mes_ct[0])){$rslt_mes .= $rslt_mes_ct[0]."ファイルについて、bldg:BuildingInstallationは見つかりませんでした。<br>\n";}
             if (!empty($rslt_mes_ct[1])){$rslt_mes .= $rslt_mes_ct[1]."ファイルについて、拡張属性は見つかりませんでした。<br>\n";}
-            if (!empty($rslt_mes_ct[2])){$rslt_mes .= $rslt_mes_ct[2]."ファイルについて、bldg:Building及びbldg:BuildingPartのインスタンスは見つかりませんでした。<br>\n";}
-          } else if (preg_match('/T05/i' ,$ck_item)){
+            if (!empty($rslt_mes_ct[2])){$rslt_mes .= $rslt_mes_ct[2]."ファイルについて、bldg:Building及びbldg:BuildingPartのインスタンスは見つかりませんでした。<br>\n";}*/
+          } else if (preg_match('/T03/i' ,$ck_item)){
             if (!empty($rslt_mes_ct[0])){$rslt_mes .= $rslt_mes_ct[0]."ファイルについて、ID参照は見つかりませんでした。<br>\n";}
-          } else if (preg_match('/T06/i' ,$ck_item)){
+          } else if (preg_match('/T-bldg-02/i' ,$ck_item)){
             if (!empty($rslt_mes_ct[0])){$rslt_mes .= $rslt_mes_ct[0]."ファイルについて、bldg:BuildingInstallationは見つかりませんでした。<br>\n";}
             if (!empty($rslt_mes_ct[1])){$rslt_mes .= $rslt_mes_ct[1]."ファイルについて、bldg:BuildingInstallationのインスタンスは見つかりませんでした。<br>\n";}
-          } else if (preg_match('/T07/i' ,$ck_item)){
+          /*} else if (preg_match('/T07/i' ,$ck_item)){
             if (!empty($rslt_mes_ct[0])){$rslt_mes .= $rslt_mes_ct[0]."ファイルについて、汎用都市オブジェクト（gen:GenericCityObject）は見つかりませんでした。<br>\n";}
-            if (!empty($rslt_mes_ct[1])){$rslt_mes .= $rslt_mes_ct[1]."ファイルについて、汎用都市オブジェクト（gen:GenericCityObject）のインスタンスは見つかりませんでした。<br>\n";}
+            if (!empty($rslt_mes_ct[1])){$rslt_mes .= $rslt_mes_ct[1]."ファイルについて、汎用都市オブジェクト（gen:GenericCityObject）のインスタンスは見つかりませんでした。<br>\n";}*/
+          } else if (preg_match('/C-bldg-01/i' ,$ck_item)) {
+            if (!empty($rslt_mes_ct[0])){$rslt_mes .= $rslt_mes_ct[0]."ファイルについて、bldg:Buildingは見つかりませんでした。<br>\n";}
+          } else if (preg_match('/L-bldg-04/i' ,$ck_item)) {
+            if (!empty($rslt_mes_ct[0])){$rslt_mes .= $rslt_mes_ct[0]."ファイルについて、bldg:Buildingは見つかりませんでした。<br>\n";}
+            if (!empty($rslt_mes_ct[1])){$rslt_mes .= $rslt_mes_ct[1]."ファイルについて、uro:majorUsage2のインスタンスは見つかりませんでした。<br>\n";}
+          } else if (preg_match('/L-bldg-05/i' ,$ck_item)) {
+            if (!empty($rslt_mes_ct[0])){$rslt_mes .= $rslt_mes_ct[0]."ファイルについて、bldg:Buildingは見つかりませんでした。<br>\n";}
+            if (!empty($rslt_mes_ct[1])){$rslt_mes .= $rslt_mes_ct[1]."ファイルについて、uro:detailedUsage2又はuro:detailedUsage3のインスタンスは見つかりませんでした。<br>\n";}
           }
         }
       }

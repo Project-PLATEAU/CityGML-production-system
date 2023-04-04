@@ -1,14 +1,19 @@
 <?php
 class ksk3d_functions_pjt{
   static $pattern = [
-    '3dcitymodel' => '{[0-9]+/(3d.*|udx)/.+\.(gml|xml|zip)}i',
-    '3dcitymodel_nozip' => '{[0-9]+/(3d.*|udx)/.+\.(gml|xml)}i',
-    '3dcitymodel_zip' => '{[0-9]+/(3d.*|udx)/.+\.(zip)}i'
+    // フォルダ名にオプションが付与されているとマッチしない事象の修正
+    //'3dcitymodel' => '{[0-9]+/(3d.*|udx)/.+\.(gml|xml|zip)}i',
+    //'3dcitymodel_nozip' => '{[0-9]+/(3d.*|udx)/.+\.(gml|xml)}i',
+    //'3dcitymodel_zip' => '{[0-9]+/(3d.*|udx)/.+\.(zip)}i'
+    '3dcitymodel' => '{[0-9]+(_[^_]+){0,}/(3d.*|udx)/.+\.(gml|xml|zip)}i',
+    '3dcitymodel_nozip' => '{[0-9]+(_[^_]+){0,}/(3d.*|udx)/.+\.(gml|xml)}i',
+    '3dcitymodel_zip' => '{[0-9]+(_[^_]+){0,}/(3d.*|udx)/.+\.(zip)}i'
   ];
   
   static $feature_temp =[
     'bldg' => array(
-      'feature' => '建築物（LOD1、LOD2）、建築物部分、建築物付属物、及びこれらの境界面'
+      // LOD3の記述を追加
+      'feature' => '建築物（LOD1、LOD2、LOD3）、建築物部分、建築物付属物、及びこれらの境界面'
     ),
     'tran' => array(
       'feature' => '道路'
@@ -30,10 +35,29 @@ class ksk3d_functions_pjt{
     ),
     'dem' => array(
       'feature' => '起伏'
+    ),
+    // 以下追加
+    'frn' => array(
+      'feature' => '都市設備'
+    ),
+    'htd' => array(
+      'feature' => '高潮浸水想定区域'
+    ),
+    'ifld' => array(
+      'feature' => '内水浸水想定区域'
+    ),
+    'veg' => array(
+      'feature' => '植生'
     )
   ];
 
   static function zip_sortingTo($zipfile ,$user_id ,$pjt_id ,$file_id){
+    ksk3d_log(__METHOD__."(".__LINE__.")");
+    ksk3d_log("zipFile: $zipfile");
+    ksk3d_log("user_id: $user_id");
+    ksk3d_log("pjt_id: $pjt_id");
+    ksk3d_log("file_id: $file_id");
+
     global $wpdb;
     $zip = new ZipArchive;
     $dr = "";
@@ -49,6 +73,7 @@ class ksk3d_functions_pjt{
           $tmp = false;
         } else {
           $tmp = mkdir($feature['directory']);
+          ksk3d_log(__METHOD__."(".__LINE__."): mkdir:".$feature['directory']);
         }
         while (! $tmp){
           $feature['file_id'] = $file_id++;
@@ -57,6 +82,7 @@ class ksk3d_functions_pjt{
             $tmp = false;
           } else {
             $tmp = mkdir($feature['directory']);
+            ksk3d_log(__METHOD__."(".__LINE__."): mkdir:".$feature['directory']);
           }
         }
         chmod($feature['directory'], 0777);
@@ -66,6 +92,8 @@ class ksk3d_functions_pjt{
 
       $codelists = [];
       $count = $zip->numFiles;
+      ksk3d_log("ファイル数カウント: $count");
+      ksk3d_log("マッチパターン:" . static::$pattern['3dcitymodel']);
       if ($count > 0){
         $tbl_data = $wpdb->prefix .KSK3D_TABLE_DATA;
         $tbl_pjt_data = $wpdb->prefix .KSK3D_TABLE_PJT_DATA;
@@ -73,6 +101,7 @@ class ksk3d_functions_pjt{
           $file_info = pathinfo($zip->getNameIndex($i));
 
           if (preg_match(static::$pattern['3dcitymodel'] ,$zip->getNameIndex($i))==1){
+            ksk3d_log("File match: ".($zip->getNameIndex($i)));
 
             $geom_info = explode('_' ,$file_info['filename'] ,3);
             if (!isset($geom_info[2])){
@@ -147,9 +176,13 @@ class ksk3d_functions_pjt{
                 $feature_temp[$geom_info[1]]['extension'] = "*";
               }}
             }
-          } else if (preg_match('/[0-9]+\/codelists/' ,$file_info['dirname'])==1){
+            // フォルダ名にオプションが付与されているとマッチしない事象の修正
+          //} else if (preg_match('/[0-9]+\/codelists/' ,$file_info['dirname'])==1){
+          } else if (preg_match('/[0-9]+(_[^_]+){0,}\/codelists/' ,$file_info['dirname'])==1) {
+            ksk3d_log("File match2: ".($zip->getNameIndex($i)));
             array_push($codelists ,$zip->getNameIndex($i));
           } else {
+            ksk3d_log("File not match: ".($zip->getNameIndex($i)));
           }
         }
         
@@ -216,6 +249,9 @@ class ksk3d_functions_pjt{
       ksk3d_dataset_delete($file_id0);
       return true;
     } else {
+      
+      ksk3d_log(__METHOD__."(".__LINE__."): Zipファイルの展開に失敗しました。");
+      ksk3d_console_log(__METHOD__."(".__LINE__."): Zipファイルの展開に失敗しました。");
       return false;
     }
   }
@@ -320,7 +356,9 @@ class ksk3d_functions_pjt{
                 $feature_temp[$geom_info[1]]['extension'] = "*";
               }}
             }
-          } else if (preg_match('/[0-9]+\/codelists/' ,$file_info['dirname'])==1){
+          // フォルダ名にオプションが付与されているとマッチしない事象の修正
+          //} else if (preg_match('/[0-9]+\/codelists/' ,$file_info['dirname'])==1){
+          } else if (preg_match('/[0-9]+(_[^_]+){0,}\/codelists/' ,$file_info['dirname'])==1){
             array_push($codelists ,$zip->getNameIndex($i));
           } else {
           }
@@ -385,6 +423,4 @@ class ksk3d_functions_pjt{
       return false;
     }
   }
-
 }
-

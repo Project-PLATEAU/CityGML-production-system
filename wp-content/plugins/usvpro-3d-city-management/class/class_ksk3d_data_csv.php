@@ -374,7 +374,9 @@ EOL
       $i = 0;
       if (!empty($result)){
         foreach($result as $gml){
-          $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+          //$sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+          $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE \"{$gml['tag_name']}\" like CONCAT('%',tag_name) {$wh};";
+          ksk3d_console_log("SQL: ".$sql);
           $rows = $wpdb->get_results($sql, ARRAY_A);
           foreach(static::$field_ref as $list){
             if (($list['tab']==0) or ($list['tab']==$tab)){

@@ -103,6 +103,7 @@ function ksk3d_plugin_start(){
   include_once ('inc/ksk3d_plugin_start/create_table.php');
   include_once ('inc/ksk3d_plugin_start/create_fn.php');
   include_once ('inc/ksk3d_plugin_start/insert_table.php');
+
 }
 function ksk3d_plugin_stop(){
 }

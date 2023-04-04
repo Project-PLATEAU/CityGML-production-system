@@ -284,7 +284,10 @@ class ksk3d_data_internal_citygml extends ksk3d_view_list{
     ksk3d_console_log("page:".$page);
     $form_id = $_POST["form_id"];
     ksk3d_console_log("form_id:".$form_id);
-
+    ksk3d_console_log(array(
+      '$_POST' => $_POST,
+      '$page' => $page,
+    ));
 
     if (isset($_POST["set_feature"])){
       ksk3d_console_log("postあり");
@@ -301,7 +304,7 @@ class ksk3d_data_internal_citygml extends ksk3d_view_list{
       ];
     }
     ksk3d_console_log($set_feature);
-
+    ksk3d_console_log($set_feature['geom']);
     if ($set_feature['geom']=="gml:Solid"){
       $sel21 = " selected";
       $sel22 = "";
@@ -446,8 +449,15 @@ EOL
     $tab = 'internal2citygml_attrib';
     $form_id = $_POST["form_id"];
     ksk3d_console_log("form_id:".$form_id);
+    //2022 メモ 
+    //set_feature前頁で選択した内容が取得されるこれはこのページ内では利用されずバックグラウンド実行時に送信される
     $set_feature = $_POST["set_feature"];
     ksk3d_console_log($set_feature);
+    
+    ksk3d_console_log(array(
+      '$_POST' => $_POST,
+      '$page' => $page,
+    ));
     
     $text = static::ksk3d_box_header($page);
 
@@ -623,20 +633,26 @@ EOL
 
   static function internal2citygml_exec(){
     $page = 'internal2citygml_exec';
-    ksk3d_console_log("page:".$page);
+    //ksk3d_console_log("page:".$page);
     $form_id = $_POST["form_id"];
-    ksk3d_console_log("form_id:".$form_id);
+    //ksk3d_console_log("form_id:".$form_id);
     $set_feature = $_POST["set_feature"];
-    ksk3d_console_log("set_feature");
-    ksk3d_console_log($set_feature);
+    //ksk3d_console_log("set_feature");
+    //ksk3d_console_log($set_feature);
     if (isset($_POST["set_attrib"])){
       $set_attrib = $_POST["set_attrib"];
-      ksk3d_console_log("set_attrib1");
-      ksk3d_console_log($set_attrib);
+      //ksk3d_console_log("set_attrib1");
+      //ksk3d_console_log($set_attrib);
     } else {
-      ksk3d_console_log("set_attrib is null");
+      //ksk3d_console_log("set_attrib is null");
       $set_attrib = [];
     }
+
+    // ログ追加
+    ksk3d_console_log(array(
+      'function' => 'internal2citygml_exec',
+      '$_POST' => $_POST
+    ));
 
     $text = static::ksk3d_box_header($page);
 
@@ -668,6 +684,12 @@ EOL
       ksk3d_console_log("set_attrib is null");
       $set_attrib = [];
     }
+
+    // ログ追加
+    ksk3d_console_log(array(
+      'function' => 'internal2citygml_bgexec',
+      '$_POST' => $_POST
+    ));
 
     $text = static::ksk3d_box_header($page);
 

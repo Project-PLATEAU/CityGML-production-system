@@ -607,7 +607,8 @@ EOL
       //メインボックス、一覧表(データ)
       $i = 0;
       foreach($result as $gml){
-        $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+        //$sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+        $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE \"{$gml['tag_path']}\" like CONCAT('%',tag_name) {$wh};";
         ksk3d_console_log("sql:".$sql);
         $rows = $wpdb->get_results($sql, ARRAY_A);
         ksk3d_console_log($rows);

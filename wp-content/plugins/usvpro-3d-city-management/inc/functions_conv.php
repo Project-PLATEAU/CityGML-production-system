@@ -143,154 +143,163 @@ function ksk3d_v_fn($fn ,$f1 ,$dr2 ,$input_option ,$output_option ,$sw_header){
 
 }
 
-function ksk3d_citygml_getattrib($path){
+// パスから属性情報を取得する関数 引数:NodeList
+function ksk3d_citygml_getattrib($path)
+{
   $result = [];
-  foreach($path as $node){
-    if (get_class($node) == "DOMElement" ){
-      if ($node->hasChildNodes()){
-        $result = array_merge($result ,ksk3d_citygml_getattrib($node->childNodes));
+  foreach ($path as $node) {
+    if (get_class($node) === 'DOMElement') {
+      if ($node->hasChildNodes()) {
+        $result = array_merge($result, ksk3d_citygml_getattrib($node->childNodes));
       }
-    } else if (get_class($node) == "DOMText"){
-      if (preg_match('/\S/' ,$node->nodeValue)){
-        $tag_path = preg_replace('/^\/.+?\/.+?\//' ,'' ,$node->parentNode->getNodePath());
-        $tag_name = preg_replace('/^.+\//' ,'' ,$tag_path);
-        $field = mb_strtolower(substr(preg_replace('/:/' ,'_' ,$tag_name) ,0 ,7));
+    } else if (get_class($node) === 'DOMText') {
+      if (preg_match('/\S/', $node->nodeValue)) {
+        $tag_path = preg_replace('/^\/.+?\/.+?\//', '', $node->parentNode->getNodePath());
+        ksk3d_console_log('$tag_path: '.$tag_path);
+        $tag_name = preg_replace('/^.+\//', '', $tag_path);
+        $field = mb_strtolower(substr(preg_replace('/:/', '_', $tag_name), 0, 7));
         $result[] = [
-          'tag_name' => $tag_name,  
+          'tag_name' => $tag_name,
           'tag_path' => $tag_path,
-          'field_name' => $field,  
-          'attrib_type' => "",
-          'attrib_name' => $node->parentNode->getAttribute("name"), 
-          'attrib_unit' => $node->parentNode->getAttribute("uom"),
-          'codelist' => $node->parentNode->getAttribute("codeSpace"), 
-          'attrib_value' => $node->nodeValue 
+          'field_name' => $field,
+          'attrib_type' => '',
+          'attrib_name' => $node->parentNode->getAttribute('name'),
+          'attrib_unit' => $node->parentNode->getAttribute('uom'),
+          'codelist' => $node->parentNode->getAttribute('codeSpace'),
+          'attrib_value' => $node->nodeValue
         ];
-        if (preg_match('/gen\:.+Attribute/i' ,$tag_path)){
-          $i = count($result)-1;
-          if (preg_match('/intAttribute/i' ,$tag_path)){
-            $result[$i]['attrib_type'] = "INT";
-          } else if (preg_match('/doubleAttribute/i' ,$tag_path)){
-            $result[$i]['attrib_type'] = "DOUBLE";
+        if (preg_match('/gen\:.+Attribute/i', $tag_path)) {
+          $i = count($result) - 1;
+          if (preg_match('/intAttribute/i', $tag_path)) {
+            $result[$i]['attrib_type'] = 'INT';
+          } else if (preg_match('/doubleAttribute/i', $tag_path)) {
+            $result[$i]['attrib_type'] = 'DOUBLE';
           } else {
+            
           }
-          $result[$i]['tag_attrib'] = "name";
-          if (empty($result[$i]['attrib_name'])){
-            $result[$i]['attrib_name'] = $node->parentNode->parentNode->getAttribute("name");
+          $result[$i]['tag_attrib'] = 'name';
+          if (empty($result[$i]['attrib_name'])) {
+            $result[$i]['attrib_name'] = $node->parentNode->parentNode->getAttribute('name');
           }
           $result[$i]['tag_attrib_name'] = $result[$i]['attrib_name'];
-          $result[$i]['tag_path'] = preg_replace('/(Attribute)\[.+?\]/' ,"$1[@name='{$result[$i]['attrib_name']}']" ,$result[$i]['tag_path']);
+          $result[$i]['tag_path'] = preg_replace('/(Attribute)\[.+?\]/', "$1[@name='{$result[$i]['attrib_name']}']", $result[$i]['tag_path']);
         }
-     }
+      }
     }
   }
   return $result;
 }
 
-function ksk3d_citygml_getattrib_($nodeList ,$ct=[]){
+function ksk3d_citygml_getattrib_($nodeList, $ct = [])
+{
   $result = [];
-  foreach($nodeList as $node){
-    if (get_class($node) == "DOMElement" ){
-      if ($node->hasChildNodes()){
-        list($result_ ,$ct) = ksk3d_citygml_getattrib_($node->childNodes ,$ct);
-        $result = array_merge($result ,$result_);
+  foreach ($nodeList as $node) {
+    $node_class = get_class($node);
+    if ($node_class === 'DOMElement') {
+      if ($node->hasChildNodes()) {
+        list($result_, $ct) = ksk3d_citygml_getattrib_($node->childNodes, $ct);
+        $result = array_merge($result, $result_);
       }
-    } else if (get_class($node) == "DOMText"){
-      if (preg_match('/\S/' ,$node->nodeValue)){
-        $tag_path = preg_replace('/^\/.+?\/.+?\//' ,'' ,$node->parentNode->getNodePath());
-        $tag_path = preg_replace('/\[\d+\]/' ,'' ,$tag_path);
-        $tag_lastpath = preg_replace('/.+\//' ,'' ,$tag_path);
-        if (preg_match('/gml:posList|gml:pos/i' ,$tag_lastpath)==0){
-          if (preg_match('/gen\:.+Attribute/i' ,$tag_path)==1){
-            $name1 = $node->parentNode->parentNode->getAttribute("name");
-            $tag_path = preg_replace('/(gen\:.+Attribute)/i' ,"$1[@name='{$name1}']" ,$tag_path);
-            $name2 = $node->parentNode->parentNode->parentNode->getAttribute("name");
-            if (!empty($name2)){
-              $tag_path = preg_replace('/^(.+\/[^\/]+)(\/[^\/]+\/[^\/]+)$/' ,"$1[@name='{$name2}']$2" ,$tag_path);
+    } else if ($node_class === 'DOMText') {
+      if (preg_match('/\S/', $node->nodeValue)) {
+        $tag_path = preg_replace('/^\/.+?\/.+?\//', '', $node->parentNode->getNodePath());
+        $tag_path = preg_replace('/\[\d+\]/', '', $tag_path);
+        $tag_lastpath = preg_replace('/.+\//', '', $tag_path);
+        ksk3d_log('$tag_path: '. $tag_path);
+        if (preg_match('/gml:posList|gml:pos/i', $tag_lastpath) == 0) {
+          if (preg_match('/gen\:.+Attribute/i', $tag_path) == 1) {
+            $name1 = $node->parentNode->parentNode->getAttribute('name');
+            $tag_path = preg_replace('/(gen\:.+Attribute)/i', "$1[@name='{$name1}']", $tag_path);
+            $name2 = $node->parentNode->parentNode->parentNode->getAttribute('name');
+            if (!empty($name2)) {
+              $tag_path = preg_replace('/^(.+\/[^\/]+)(\/[^\/]+\/[^\/]+)$/', "$1[@name='{$name2}']$2", $tag_path);
             }
-          } else if (preg_match('/KeyValuePair/i' ,$tag_path)==1){
-            $name1 = $node->parentNode->parentNode->childNodes->item(1)->getAttribute("codeSpace");
+          } else if (preg_match('/KeyValuePair/i', $tag_path) == 1) {
+            $name1 = $node->parentNode->parentNode->childNodes->item(1)->getAttribute('codeSpace');
             $v1 = $node->parentNode->parentNode->childNodes->item(1)->firstChild->nodeValue;
             $tag_path = $node->parentNode->parentNode->childNodes->item(1)->getNodePath();
-            $tag_path = preg_replace('/^\/.+?\/.+?\//' ,'' ,$tag_path);
-            $tag_path = preg_replace('/\[\d+\]/' ,'' ,$tag_path);
+            $tag_path = preg_replace('/^\/.+?\/.+?\//', '', $tag_path);
+            $tag_path = preg_replace('/\[\d+\]/', '', $tag_path);
             $tag_path .= "[@codeSpace='{$name1}' and text()='{$v1}']";
           }
-          if (!isset($ct[$tag_path])){
-            $ct[$tag_path]=1;
-          
-            $tag_name = preg_replace('/^.+\//' ,'' ,$tag_path);
+          if (!isset($ct[$tag_path])) {
+            $ct[$tag_path] = 1;
 
-            $field_ct=2;
-            $field = mb_strtolower(substr(preg_replace('/:/' ,'_' ,$tag_name) ,0 ,7));
-            if (isset($ct2[$field])){
-              $field2 = $field.$field_ct;
-              while (isset($ct2[$field2])){
+            $tag_name = preg_replace('/^.+\//', '', $tag_path);
+
+            $field_ct = 2;
+            $field = mb_strtolower(substr(preg_replace('/:/', '_', $tag_name), 0, 7));
+            if (isset($ct2[$field])) {
+              $field2 = $field . $field_ct;
+              while (isset($ct2[$field2])) {
                 $field_ct++;
-                $field2 = $field.$field_ct;
+                $field2 = $field . $field_ct;
               }
               $field = $field2;
             }
-            $ct2[$field]=1;
+            $ct2[$field] = 1;
 
             $result[] = [
-              'tag_name' => $tag_name,  
+              'tag_name' => $tag_name,
               'tag_path' => $tag_path,
-              'field_name' => $field,  
-              'attrib_type' => "",
-              'attrib_name' => $node->parentNode->getAttribute("name"), 
-              'attrib_unit' => $node->parentNode->getAttribute("uom"),
-              'codelist' => $node->parentNode->getAttribute("codeSpace"), 
-              'attrib_value' => $node->nodeValue 
+              'field_name' => $field,
+              'attrib_type' => '',
+              'attrib_name' => $node->parentNode->getAttribute('name'),
+              'attrib_unit' => $node->parentNode->getAttribute('uom'),
+              'codelist' => $node->parentNode->getAttribute('codeSpace'),
+              'attrib_value' => $node->nodeValue
             ];
-            $i = count($result)-1;
-            if (preg_match('/gen\:.+Attribute/i' ,$tag_path)==1){
-              if (preg_match('/intAttribute/i' ,$tag_path)){
-                $result[$i]['attrib_type'] = "INT";
-              } else if (preg_match('/doubleAttribute/i' ,$tag_path)){
-                $result[$i]['attrib_type'] = "DOUBLE";
-              } else {
+            $i = count($result) - 1;
+            if (preg_match('/gen\:.+Attribute/i', $tag_path) == 1) {
+              if (preg_match('/intAttribute/i', $tag_path)) {
+                $result[$i]['attrib_type'] = 'INT';
+              } else if (preg_match('/doubleAttribute/i', $tag_path)) {
+                $result[$i]['attrib_type'] = 'DOUBLE';
               }
-              $result[$i]['tag_attrib'] = "name";
-              if (empty($result[$i]['attrib_name'])){
-                if (!empty($name2)){
-                  $result[$i]['attrib_name'] = $name1."_".$name2;
+
+              $result[$i]['tag_attrib'] = 'name';
+              if (empty($result[$i]['attrib_name'])) {
+                if (!empty($name2)) {
+                  $result[$i]['attrib_name'] = $name1 . '_' . $name2;
                 } else {
                   $result[$i]['attrib_name'] = $name1;
                 }
               }
               $result[$i]['tag_attrib_name'] = $result[$i]['attrib_name'];
-            } else if (preg_match('/KeyValuePair/i' ,$tag_path)==1){
-              $tag_name = preg_replace('/^.+\//' ,'' ,$node->parentNode->parentNode->getNodePath());
+            } else if (preg_match('/KeyValuePair/i', $tag_path) == 1) {
+              $tag_name = preg_replace('/^.+\//', '', $node->parentNode->parentNode->getNodePath());
               $result[$i]['tag_name'] = $tag_name;
-              $v2 = preg_replace('/:/' ,'_' ,$node->parentNode->parentNode->childNodes->item(3)->firstChild->nodeValue);
+              $v2 = preg_replace('/:/', '_', $node->parentNode->parentNode->childNodes->item(3)->firstChild->nodeValue);
               $result[$i]['attrib_value'] = $v2;
-              $result[$i]['attrib_name'] = preg_replace('/:/' ,'_' ,$tag_name."_".$v1);
-
+              $result[$i]['attrib_name'] = preg_replace('/:/', '_', $tag_name . '_' . $v1);
             }
-          } else {
           }
-        } else {
         }
-      } else {
       }
     }
   }
-  return array($result ,$ct);
+  return array($result, $ct);
 }
 
-function ksk3d_citygml_test($filename,$zip=true) {
-  if ($zip){
+function ksk3d_citygml_test($filename, $zip = true)
+{
+  ksk3d_console_log(array(
+    'func'=>'ksk3d_citygml_test', 
+    '$filename'=>$filename,
+    '$zip'=> $zip));
+
+  if ($zip) {
     $upload_dir = ksk3d_upload_dir();
-    $file_id = preg_replace('{^(.+?)/.+$}',"$1",substr($filename ,mb_strlen($upload_dir)+1));
-    $upload_dir2 = $upload_dir ."/" .$file_id;
+    $file_id = preg_replace('{^(.+?)/.+$}', "$1", substr($filename, mb_strlen($upload_dir) + 1));
+    $upload_dir2 = $upload_dir . "/" . $file_id;
     $zip_pathinfo = ksk3d_functions_zip::pathinfo($file_id);
-    if (is_file($zip_pathinfo['fullpath'])){
-      $file = substr($filename ,mb_strlen($upload_dir2)+1);
-      $filename = ksk3d_zip_extractTo1($zip_pathinfo['fullpath'] ,"" ,$file);
+    if (is_file($zip_pathinfo['fullpath'])) {
+      $file = substr($filename, mb_strlen($upload_dir2) + 1);
+      $filename = ksk3d_zip_extractTo1($zip_pathinfo['fullpath'], "", $file);
     }
   }
 
-  if (!file_exists($filename)){
+  if (!file_exists($filename)) {
     ksk3d_console_log("file is not found.");
     return false;
   }
@@ -303,45 +312,64 @@ function ksk3d_citygml_test($filename,$zip=true) {
   $doc->load($filename);
   $cityObjectMember = $doc->getElementsByTagName('cityObjectMember');
   $test = $cityObjectMember[0];
-  $feature = "";
+  $feature = null;
   $items = $test->childNodes;
-  for ($i = 0; $i < $items->length; $i++){
-    if (get_class($items->item($i)) == "DOMElement" ){
+  for ($i = 0; $i < $items->length; $i++) {
+    if (get_class($items->item($i)) == "DOMElement") {
       $feature = $items->item($i);
       break;
     }
   }
-  if (empty($feature)){
+  if (empty($feature)) {
     return false;
   }
-  $feature_path = preg_replace('/^(\/.+?\/.+?\/).*/' ,"$1" ,$feature->getNodePath());
-  $tag = preg_replace('/^\/.+?\/.+?\//' ,'' ,$feature->getNodePath());
-  $path = $feature_path ."".$tag;
+  $feature_path = preg_replace('/^(\/.+?\/.+?\/).*/', "$1", $feature->getNodePath());
+  $tag = preg_replace('/^\/.+?\/.+?\//', '', $feature->getNodePath());
+  $path = $feature_path . "" . $tag;
+  ksk3d_console_log(array(
+    'tag' => $tag,
+    'replaced' => $feature_path,
+    'node_full_path' => $feature->getNodePath(),
+  ));
+
 
   $gml_id = $feature->getAttribute("gml:id");
-  if (!empty($gml_id)){
-    $field = mb_strtolower(substr(preg_replace('/^.+(:|\/)/' ,'' ,$tag) ,0 ,7));
-    if (isset($ct[$field])){$ct[$field]++;} else {$ct[$field]=1;}
+  if (!empty($gml_id)) {
+    $field = mb_strtolower(substr(preg_replace('/^.+(:|\/)/', '', $tag), 0, 7));
+    if (isset($ct[$field])) {
+      $ct[$field]++;
+    } else {
+      $ct[$field] = 1;
+    }
     $result[] = [
-      'tag_name' => "gml:id",  
-      'tag_path' => $tag."/@gml:id",
-      'tag_attrib' => "gml:id",  
-      'field_name' => "gml_id",  
+      'tag_name' => "gml:id",
+      'tag_path' => $tag . "/@gml:id",
+      'tag_attrib' => "gml:id",
+      'field_name' => "gml_id",
       'attrib_type' => "",
-      'attrib_name' => "gml_id", 
-      'codelist' => "", 
-      'attrib_value' => $gml_id 
+      'attrib_name' => "gml_id",
+      'codelist' => "",
+      'attrib_value' => $gml_id
     ];
   }
 
   $xpath = new DOMXpath($doc);
   $ct_geom = 0;
+  // 最初に見つかったDOMElementに対して、子ノードを取得する
   $attributes = $feature->childNodes;
-  foreach ($attributes as $attrib){
-    if (get_class($attrib) == "DOMElement" ){
-      if (preg_match('/:lod[\-0-4]/i',$attrib->getNodePath())==1){
-        $tag_path = preg_replace('/^\/.+?\/.+?\//' ,'' ,$attrib->getNodePath());
-        $tag_name = preg_replace('/^.+\//' ,'' ,$tag_path);
+  foreach ($attributes as $attrib) {
+    if (get_class($attrib) == "DOMElement") {
+      $node_path = $attrib->getNodePath();
+      // 対象にbldg:outerBuildingInstallation追加
+      if (preg_match('/:lod[\-0-4]/i', $node_path) == 1) {
+      //if (preg_match('/bldg:outerBuildingInstallation(\[[0-9]+\])?|:lod[\-0-4]/i', $node_path) == 1) {
+        // パスの前2つ（/core:CityModel/core:cityObjectMember[1]/）を除去
+        $tag_path = preg_replace('/^\/.+?\/.+?\//', '', $node_path);
+        ksk3d_console_log('$tag_path: '.$tag_path);
+        // パスの最後だけを抽出
+        $tag_name = preg_replace('/^.+\//', '', $tag_path);
+        //// 後ろの数字を除去する処理を追加
+        //$tag_name = preg_replace('/\[[0-9]+\]$/', '', $tag_name);
         $result[] = [
           'tag_name' => $tag_name,
           'tag_path' => $tag_path,
@@ -349,30 +377,36 @@ function ksk3d_citygml_test($filename,$zip=true) {
           'attrib_type' => "GEOMETRY",
           'attrib_name' => "空間データ",
           'codelist' => "",
-          'attrib_value' => $attrib->nodeValue 
+          'attrib_value' => $attrib->nodeValue
         ];
-      } else if (preg_match('/boundedBy|:lod[\-0-4]/i',$attrib->getNodePath())==0){
-        $result = array_merge($result ,ksk3d_citygml_getattrib($xpath->query($attrib->getNodePath())));
+      } else if (preg_match('/boundedBy|:lod[\-0-4]/i', $node_path) == 0) {
+        $result = array_merge($result, ksk3d_citygml_getattrib($xpath->query($node_path)));
       }
     }
   }
 
-  for($i=0;$i<count($result);$i++){
-    if (isset($ct[$result[$i]['field_name']])){
+  ksk3d_console_log('$result 1:');
+  ksk3d_console_log($result);
+
+  // 重複していた場合は後ろに番号を振る
+  for ($i = 0; $i < count($result); $i++) {
+    if (isset($ct[$result[$i]['field_name']])) {
       $ct[$result[$i]['field_name']]++;
     } else {
       $ct[$result[$i]['field_name']] = 1;
     }
-    if ($ct[$result[$i]['field_name']]>1){
+    if ($ct[$result[$i]['field_name']] > 1) {
       $result[$i]['field_name'] .= $ct[$result[$i]['field_name']];
     }
   }
+  ksk3d_console_log('$ct 1:');
+  ksk3d_console_log($ct);
 
-  if (is_file($zip_pathinfo['fullpath'])){
+  if (is_file($zip_pathinfo['fullpath'])) {
     $userrootdir = ksk3d_userrootdir($filename);
-    ksk3d_console_log("userrootdir:".$userrootdir);
-    if ($userrootdir != false){
-      chmod($userrootdir ,0777);
+    ksk3d_console_log("userrootdir:" . $userrootdir);
+    if ($userrootdir != false) {
+      chmod($userrootdir, 0777);
       ksk3d_delTree($userrootdir);
     }
   }
@@ -380,21 +414,25 @@ function ksk3d_citygml_test($filename,$zip=true) {
   return $result;
 }
 
-function ksk3d_citygml_test_onefile($src_id) {
-  ksk3d_console_log("ksk3d_citygml_test_onefile");
+function ksk3d_citygml_test_onefile($src_id)
+{
+  ksk3d_console_log(array(
+    'func'=>'ksk3d_citygml_test_onefile', 
+    '$src_id'=>$src_id));
 
   global $wpdb;
-  $tbl_name = $wpdb->prefix .KSK3D_TABLE_DATA;
+  $tbl_name = $wpdb->prefix . KSK3D_TABLE_DATA;
   $sql = "SELECT file_id,file_path,file_name,file_format,zip_path,zip_name FROM {$tbl_name} WHERE id = %d;";
   $prepared = $wpdb->prepare($sql, $src_id);
-  $tbl_data = $wpdb->get_row($prepared ,ARRAY_A);
-  if (preg_match('/内部データセット/' ,$tbl_data['file_format'])==1){
+  $tbl_data = $wpdb->get_row($prepared, ARRAY_A);
+  if (preg_match('/内部データセット/', $tbl_data['file_format']) == 1) {
+    ksk3d_log('ファイルのフォーマットが内部データセットの為、処理を中止します。');
     return false;
   }
 
-  $file1 = $tbl_data['file_path']."/".$tbl_data['file_name'];
-  ksk3d_console_log("file:".$file1);
-  $source_dir = ksk3d_upload_dir() ."/" .$tbl_data['file_id'];
+  $file1 = $tbl_data['file_path'] . "/" . $tbl_data['file_name'];
+  ksk3d_console_log("file:" . $file1);
+  $source_dir = ksk3d_upload_dir() . "/" . $tbl_data['file_id'];
   ksk3d_functions_zip::fileid_extractTo($tbl_data['file_id']);
 
   $result = [];
@@ -404,63 +442,82 @@ function ksk3d_citygml_test_onefile($src_id) {
   $ct = [];
 
   $doc = new DOMDocument();
-  foreach(glob($file1) as $filename) {
+  foreach (glob($file1) as $filename) {
     if (is_file($filename)) {
-      ksk3d_console_log("filename:".$filename);
+      $loadResult = $doc->load($filename);
       
-      $doc->load($filename);
       $cityObjectMembers = $doc->getElementsByTagName('cityObjectMember');
-      foreach ($cityObjectMembers as $cityObjectMember){
-        foreach ($cityObjectMember->childNodes as $cityObject){
-          if (get_class($cityObject) == "DOMElement" ){
-            $feature = $cityObject; 
-            if (!empty($cityObject)){
-              $cityObject_path = preg_replace('/^(\/.+?\/.+?\/).*/' ,"$1" ,$cityObject->getNodePath());
-              $tag = preg_replace('/^\/.+?\/.+?\//' ,'' ,$cityObject->getNodePath());  
-              $path = $cityObject_path ."".$tag;
+      
+      ksk3d_console_log(array(
+        'filename' => $filename,
+        'load result' => $loadResult,
+        'CityObjectMember count' => $cityObjectMembers->length
+      ));
+      
+      foreach ($cityObjectMembers as $cityObjectMember) {
+        foreach ($cityObjectMember->childNodes as $cityObject) {
+          ksk3d_log("Target: {$cityObjectMember->nodeName}/{$cityObject->nodeName}");
+          if (get_class($cityObject) === 'DOMElement') {
+            // 使われていない変数をコメントアウト
+            //$feature = $cityObject;
+            if (!empty($cityObject)) {
+              // 使われていない変数をコメントアウト
+              //$cityObject_path = preg_replace('/^(\/.+?\/.+?\/).*/', "$1", $cityObject->getNodePath());
+              $tag = preg_replace('/^\/.+?\/.+?\//', '', $cityObject->getNodePath());
+              // 使われていない変数をコメントアウト
+              //$path = $cityObject_path . "" . $tag;
 
-              if ($flg_gml_id){
-                $gml_id = $cityObject->getAttribute("gml:id");
-                if (!empty($gml_id)){
-                  $field = mb_strtolower(substr(preg_replace('/^.+(:|\/)/' ,'' ,$tag) ,0 ,7));
-                  if (isset($ct[$field])){$ct[$field]++;} else {$ct[$field]=1;}
+              if ($flg_gml_id) {
+                $gml_id = $cityObject->getAttribute('gml:id');
+                if (!empty($gml_id)) {
+                  $field = mb_strtolower(substr(preg_replace('/^.+(:|\/)/', '', $tag), 0, 7));
+                  if (isset($ct[$field])) {
+                    $ct[$field]++;
+                  } else {
+                    $ct[$field] = 1;
+                  }
                   $result[] = [
-                    'tag_name' => "gml:id",  
-                    'tag_path' => $tag."/@gml:id",
-                    'tag_attrib' => "gml:id",  
-                    'field_name' => "gml_id",  
-                    'attrib_type' => "",
-                    'attrib_name' => "gml_id", 
-                    'codelist' => "", 
-                    'attrib_value' => $gml_id 
+                    'tag_name' => 'gml:id',
+                    'tag_path' => $tag . '/@gml:id',
+                    'tag_attrib' => 'gml:id',
+                    'field_name' => 'gml_id',
+                    'attrib_type' => '',
+                    'attrib_name' => 'gml_id',
+                    'codelist' => '',
+                    'attrib_value' => $gml_id
                   ];
                   $flg_gml_id = false;
                 }
               }
-              
+
               $xpath = new DOMXpath($doc);
-              $ct_geom = 0;
+              // 使われていない変数をコメントアウト
+              //$ct_geom = 0;
               $attributes = $cityObject->childNodes;
-              foreach ($attributes as $attrib){
-                if (get_class($attrib) == "DOMElement" ){
-                  $tag_path = preg_replace('/^\/.+?\/.+?\//' ,'' ,$attrib->getNodePath());
-                  if (preg_match('/:lod[\-0-4]/i',$attrib->getNodePath())==1){
-                    if (!isset($result_name[$tag_path])){
-                      $result_name[$tag_path]=1;
-                        $tag_name = preg_replace('/^.+\//' ,'' ,$tag_path);
-                        $result[] = [
-                          'tag_name' => $tag_name,
-                          'tag_path' => $tag_path,
-                          'field_name' => "the_geom",
-                          'attrib_type' => "GEOMETRY",
-                          'attrib_name' => "空間データ",
-                          'codelist' => "",
-                          'attrib_value' => $attrib->nodeValue 
-                        ];
+              
+              foreach ($attributes as $attrib) {
+                if (get_class($attrib) === 'DOMElement') {
+                  $node_path = $attrib->getNodePath();
+                  $tag_path = preg_replace('/^\/.+?\/.+?\//', '', $node_path);
+                  if (preg_match('/:lod[\-0-4]/i', $node_path) == 1) {
+                    if (!isset($result_name[$tag_path])) {
+                      ksk3d_log("処理ノード: $node_path");
+                      $result_name[$tag_path] = 1;
+                      $tag_name = preg_replace('/^.+\//', '', $tag_path);
+                      $result[] = [
+                        'tag_name' => $tag_name,
+                        'tag_path' => $tag_path,
+                        'field_name' => 'the_geom',
+                        'attrib_type' => 'GEOMETRY',
+                        'attrib_name' => '空間データ',
+                        'codelist' => '',
+                        'attrib_value' => $attrib->nodeValue
+                      ];
                     }
-                  } else if (preg_match('/boundedBy|:lod[\-0-4]/i',$attrib->getNodePath())==0){
-                    list($result_ ,$ct) = ksk3d_citygml_getattrib_($xpath->query($attrib->getNodePath()) ,$ct);
-                    $result = array_merge($result ,$result_);
+                  } else if (preg_match('/boundedBy|:lod[\-0-4]/i', $node_path) == 0) {
+                    ksk3d_log("処理ノード: $node_path");
+                    list($result_, $ct) = ksk3d_citygml_getattrib_($xpath->query($node_path), $ct);
+                    $result = array_merge($result, $result_);
                   }
                 }
               }
@@ -473,40 +530,43 @@ function ksk3d_citygml_test_onefile($src_id) {
       break;
     }
   }
-  for($i=0;$i<count($result);$i++){
+  for ($i = 0; $i < count($result); $i++) {
     $field = $result[$i]['field_name'];
-    if (isset($ct[$result[$i]['field_name']])){
+    if (isset($ct[$result[$i]['field_name']])) {
       $ct[$field]++;
     } else {
       $ct[$field] = 1;
     }
-    if ($ct[$field]>1){
-      $result[$i]['field_name'] = $field .$ct[$result[$i]['field_name']];
+    if ($ct[$field] > 1) {
+      $result[$i]['field_name'] = $field . $ct[$result[$i]['field_name']];
     }
   }
   ksk3d_console_log("result-属性の重複調整");
   ksk3d_console_log($result);
-  
+
   ksk3d_fileid_zip_Compress_unlink($tbl_data['file_id']);
-  
+
   return $result;
 }
 
-function ksk3d_citygml_test_all($src_id) {
-  ksk3d_console_log("ksk3d_citygml_test_all");
+function ksk3d_citygml_test_all($src_id)
+{
+  ksk3d_console_log(array(
+    'func'=>'ksk3d_citygml_test_all', 
+    '$src_id'=>$src_id));
 
   global $wpdb;
-  $tbl_name = $wpdb->prefix .KSK3D_TABLE_DATA;
+  $tbl_name = $wpdb->prefix . KSK3D_TABLE_DATA;
   $sql = "SELECT file_id,file_path,file_name,file_format,zip_path,zip_name FROM {$tbl_name} WHERE id = %d;";
   $prepared = $wpdb->prepare($sql, $src_id);
-  $tbl_data = $wpdb->get_row($prepared ,ARRAY_A);
-  if (preg_match('/内部データセット/' ,$tbl_data['file_format'])==1){
+  $tbl_data = $wpdb->get_row($prepared, ARRAY_A);
+  if (preg_match('/内部データセット/', $tbl_data['file_format']) == 1) {
     return false;
   }
 
-  $file1 = $tbl_data['file_path']."/".$tbl_data['file_name'];
-  ksk3d_console_log("file:".$file1);
-  $source_dir = ksk3d_upload_dir() ."/" .$tbl_data['file_id'];
+  $file1 = $tbl_data['file_path'] . "/" . $tbl_data['file_name'];
+  ksk3d_console_log("file:" . $file1);
+  $source_dir = ksk3d_upload_dir() . "/" . $tbl_data['file_id'];
   ksk3d_functions_zip::fileid_extractTo($tbl_data['file_id']);
 
   $result = [];
@@ -516,63 +576,68 @@ function ksk3d_citygml_test_all($src_id) {
   $ct = [];
 
   $doc = new DOMDocument();
-  foreach(glob($file1) as $filename) {
+  foreach (glob($file1) as $filename) {
     if (is_file($filename)) {
-      ksk3d_console_log("filename:".$filename);
-      
+      ksk3d_console_log("filename:" . $filename);
+
       $doc->load($filename);
       $cityObjectMembers = $doc->getElementsByTagName('cityObjectMember');
-      foreach ($cityObjectMembers as $cityObjectMember){
-        foreach ($cityObjectMember->childNodes as $cityObject){
-          if (get_class($cityObject) == "DOMElement" ){
-            $feature = $cityObject; 
-            if (!empty($cityObject)){
-              $cityObject_path = preg_replace('/^(\/.+?\/.+?\/).*/' ,"$1" ,$cityObject->getNodePath());
-              $tag = preg_replace('/^\/.+?\/.+?\//' ,'' ,$cityObject->getNodePath());  
-              $path = $cityObject_path ."".$tag;
+      foreach ($cityObjectMembers as $cityObjectMember) {
+        foreach ($cityObjectMember->childNodes as $cityObject) {
+          if (get_class($cityObject) == "DOMElement") {
+            $feature = $cityObject;
+            if (!empty($cityObject)) {
+              $cityObject_path = preg_replace('/^(\/.+?\/.+?\/).*/', "$1", $cityObject->getNodePath());
+              $tag = preg_replace('/^\/.+?\/.+?\//', '', $cityObject->getNodePath());
+              $path = $cityObject_path . "" . $tag;
 
-              if ($flg_gml_id){
+              if ($flg_gml_id) {
                 $gml_id = $cityObject->getAttribute("gml:id");
-                if (!empty($gml_id)){
-                  $field = mb_strtolower(substr(preg_replace('/^.+(:|\/)/' ,'' ,$tag) ,0 ,7));
-                  if (isset($ct[$field])){$ct[$field]++;} else {$ct[$field]=1;}
+                if (!empty($gml_id)) {
+                  $field = mb_strtolower(substr(preg_replace('/^.+(:|\/)/', '', $tag), 0, 7));
+                  if (isset($ct[$field])) {
+                    $ct[$field]++;
+                  } else {
+                    $ct[$field] = 1;
+                  }
                   $result[] = [
-                    'tag_name' => "gml:id",  
-                    'tag_path' => $tag."/@gml:id",
-                    'tag_attrib' => "gml:id",  
-                    'field_name' => "gml_id",  
+                    'tag_name' => "gml:id",
+                    'tag_path' => $tag . "/@gml:id",
+                    'tag_attrib' => "gml:id",
+                    'field_name' => "gml_id",
                     'attrib_type' => "",
-                    'attrib_name' => "gml_id", 
-                    'codelist' => "", 
-                    'attrib_value' => $gml_id 
+                    'attrib_name' => "gml_id",
+                    'codelist' => "",
+                    'attrib_value' => $gml_id
                   ];
                   $flg_gml_id = false;
                 }
               }
-              
+
               $xpath = new DOMXpath($doc);
               $ct_geom = 0;
               $attributes = $cityObject->childNodes;
-              foreach ($attributes as $attrib){
-                if (get_class($attrib) == "DOMElement" ){
-                  $tag_path = preg_replace('/^\/.+?\/.+?\//' ,'' ,$attrib->getNodePath());
-                  if (preg_match('/:lod[\-0-4]/i',$attrib->getNodePath())==1){
-                    if (!isset($result_name[$tag_path])){
-                      $result_name[$tag_path]=1;
-                        $tag_name = preg_replace('/^.+\//' ,'' ,$tag_path);
-                        $result[] = [
-                          'tag_name' => $tag_name,
-                          'tag_path' => $tag_path,
-                          'field_name' => "the_geom",
-                          'attrib_type' => "GEOMETRY",
-                          'attrib_name' => "空間データ",
-                          'codelist' => "",
-                          'attrib_value' => $attrib->nodeValue 
-                        ];
+              foreach ($attributes as $attrib) {
+                if (get_class($attrib) === 'DOMElement') {
+                  $node_full_path = $attrib->getNodePath();
+                  $tag_path = preg_replace('/^\/.+?\/.+?\//', '', $node_full_path);
+                  if (preg_match('/:lod[\-0-4]/i', $node_full_path) == 1) {
+                    if (!isset($result_name[$tag_path])) {
+                      $result_name[$tag_path] = 1;
+                      $tag_name = preg_replace('/^.+\//', '', $tag_path);
+                      $result[] = [
+                        'tag_name' => $tag_name,
+                        'tag_path' => $tag_path,
+                        'field_name' => "the_geom",
+                        'attrib_type' => "GEOMETRY",
+                        'attrib_name' => "空間データ",
+                        'codelist' => "",
+                        'attrib_value' => $attrib->nodeValue
+                      ];
                     }
-                  } else if (preg_match('/boundedBy|:lod[\-0-4]/i',$attrib->getNodePath())==0){
-                    list($result_ ,$ct) = ksk3d_citygml_getattrib_($xpath->query($attrib->getNodePath()) ,$ct);
-                    $result = array_merge($result ,$result_);
+                  } else if (preg_match('/boundedBy|:lod[\-0-4]/i', $node_full_path) == 0) {
+                    list($result_, $ct) = ksk3d_citygml_getattrib_($xpath->query($node_full_path), $ct);
+                    $result = array_merge($result, $result_);
                   }
                 }
               }
@@ -584,26 +649,27 @@ function ksk3d_citygml_test_all($src_id) {
       ksk3d_console_log($result);
     }
   }
-  for($i=0;$i<count($result);$i++){
+  for ($i = 0; $i < count($result); $i++) {
     $field = $result[$i]['field_name'];
-    if (isset($ct[$result[$i]['field_name']])){
+    if (isset($ct[$result[$i]['field_name']])) {
       $ct[$field]++;
     } else {
       $ct[$field] = 1;
     }
-    if ($ct[$field]>1){
-      $result[$i]['field_name'] = $field .$ct[$result[$i]['field_name']];
+    if ($ct[$field] > 1) {
+      $result[$i]['field_name'] = $field . $ct[$result[$i]['field_name']];
     }
   }
   ksk3d_console_log("result-属性の重複調整");
   ksk3d_console_log($result);
-  
+
   ksk3d_fileid_zip_Compress_unlink($tbl_data['file_id']);
-  
+
   return $result;
 }
 
 function ksk3d_citygml23DTiles_ex($dataset_id1, $op_xy_replace=false, $attrib, $geometricError=40) {
+  ksk3d_log("--- ksk3d_citygml23DTiles_ex Start. ---");
   $userID = ksk3d_get_current_user_id();
   $file_id2 = ksk3d_get_max_file_id();
   $upload_dir = ksk3d_upload_dir() ."/" .$file_id2;
@@ -615,20 +681,20 @@ function ksk3d_citygml23DTiles_ex($dataset_id1, $op_xy_replace=false, $attrib, $
   ksk3d_console_log("charset_collate:".$charset_collate);
   $tbl_name = $wpdb->prefix .KSK3D_TABLE_DATA;
   $sql = "INSERT INTO {$tbl_name} (
-  `user_id`,
-  `file_id`,
-  `display_name`,
-  `file_format`,
-  `file_name`,
-  `file_path`,
-  `registration_date`,
-  `meta_name`,
-  `meta_path`,
-  `memo_city`,
-  `memo`,
-  `meshsize`,
-  `camera_position`
-  )
+    `user_id`,
+    `file_id`,
+    `display_name`,
+    `file_format`,
+    `file_name`,
+    `file_path`,
+    `registration_date`,
+    `meta_name`,
+    `meta_path`,
+    `memo_city`,
+    `memo`,
+    `meshsize`,
+    `camera_position`
+    )
   SELECT 
     `user_id`,
     {$file_id2},
@@ -709,6 +775,10 @@ function ksk3d_citygml23DTiles_ex($dataset_id1, $op_xy_replace=false, $attrib, $
           $file3 = $file2;
         }
       } else {
+        // 未定義の処理呼び出しを回避する為、continueを挿入
+        continue;
+
+        /*
         $dr2_filepath= $dr2."/".substr($filepath['dirname'] ,strlen($source_dir)+1);
         if (!is_dir($dr2_filepath)){
           ksk3d_mkdir($dr2_filepath);
@@ -723,7 +793,9 @@ function ksk3d_citygml23DTiles_ex($dataset_id1, $op_xy_replace=false, $attrib, $
           chmod($dr3_filepath ,0777);
         }
         $file3 = $dr3_filepath."/".$filepath['basename'];
+        ksk3d_log("WARNING 未定義のgenerate_backside呼び出し。");
         ksk3d_functions_citygml::generate_backside($file2 ,$file3 ,$attrib);
+        */
       }
 
       $dr9_filepath = $dr9."/".$filepath['filename'];
@@ -748,7 +820,10 @@ function ksk3d_citygml23DTiles_ex($dataset_id1, $op_xy_replace=false, $attrib, $
       ksk3d_console_log($return_var);
       if ($return_var){
         $text .= "失敗しました。<br>";
+        ksk3d_log("3DTilesへの変換に失敗しました。");
+        ksk3d_log(json_encode($output));
       } else {
+        ksk3d_log("3DTilesへの変換に成功しました。");
         $text .= "成功しました。<br>";
         $ct++;
         $out = "";
@@ -839,6 +914,8 @@ EOL
     $text,
     $file_id2
   );
+  
+  ksk3d_log("--- ksk3d_citygml23DTiles_ex End. ---");
 }
 
 function ksk3d_citygml2DB($filename ,$tbl_attrib ,$tbl_geom ,$set_attrib ,$set_high="") {
@@ -1050,30 +1127,40 @@ function ksk3d_dataset_delete($file_id){
     return true;
 }
 
-function ksk3d_DB_create_attrib($tbl_attrib ,$set_attrib){
+
+// コメント追加
+/**
+ * 内部データセット用のテーブルを作成する関数
+ * @param mixed $tbl_attrib 作成するテーブル名
+ * @param mixed $set_attrib 属性のリスト
+ */
+function ksk3d_DB_create_attrib($tbl_attrib, $set_attrib)
+{
   global $wpdb;
-  $charset_collate = $wpdb->get_charset_collate();  
+  $charset_collate = $wpdb->get_charset_collate();
   $sql = "";
-    ksk3d_console_log($set_attrib);
-  foreach($set_attrib as $attrib){
-    if (isset($attrib['field_name'])){$attrib['attrib_field'] = $attrib['field_name'];}
-    if (preg_match('/^the_geom$/i' ,$attrib['attrib_field'])!=1){
+  ksk3d_console_log("ksk3d_DB_create_attrib");
+  ksk3d_console_log($set_attrib);
+  foreach ($set_attrib as $attrib) {
+    if (isset($attrib['field_name'])) {
+      $attrib['attrib_field'] = $attrib['field_name'];
+    }
+    if (preg_match('/^the_geom$/i', $attrib['attrib_field']) != 1) {
       $attrib_type = $attrib['attrib_type'];
-      if (preg_match('/char/i' ,$attrib_type)){
+      if (preg_match('/char/i', $attrib_type)) {
         $attrib_type .= "({$attrib['attrib_digit']})";
       }
       $sql .= "`{$attrib['attrib_field']}` {$attrib_type},\n";
     }
   }
-  $sql =<<<EOL
+  $sql = <<<EOL
 CREATE TABLE {$tbl_attrib} (
 `id` bigint(20) NOT NULL AUTO_INCREMENT,
 {$sql}
 UNIQUE KEY id (id)
 ) $charset_collate;
-EOL
-;
-  ksk3d_log( "sql:" .$sql );
+EOL;
+  ksk3d_log("sql:" . $sql);
   $wpdb->query($sql);
 }
 
@@ -1109,12 +1196,20 @@ function ksk3d_DB_insert_attrib($userID ,$file_id ,$set_attrib){
   foreach($set_attrib as $attrib){
     ksk3d_console_log("attrib");
     ksk3d_console_log($attrib);
-    if (isset($attrib['field_name'])){$attrib['attrib_field'] = $attrib['field_name'];}
-    if (preg_match('/^the_geom$/i' ,$attrib['attrib_field'])!=1){
+    // 'field_name'を'attrib_field'に代入
+    if (isset($attrib['field_name'])) {
+      $attrib['attrib_field'] = $attrib['field_name'];
+    }
+    // 'attrib_field'が'the_geom'と完全一致しない場合
+    if (preg_match('/^the_geom$/i' ,$attrib['attrib_field'])!=1) {
+      // カウントアップ
       $i++;
-      if (!isset($attrib['attrib_unit'])){$attrib['attrib_unit']="";}
-      if (!isset($attrib['tag_path'])){$attrib['tag_path']="";}
-      if (!isset($attrib['codelist'])){$attrib['codelist']="";}
+      // キーがなかったら空白文字で作成する？
+      if (!isset($attrib['attrib_unit'])) { $attrib['attrib_unit'] = ""; }
+      if (!isset($attrib['tag_path'])) { $attrib['tag_path'] = ""; }
+      if (!isset($attrib['codelist'])) { $attrib['codelist'] = ""; }
+
+      // DBにデータを挿入する
       $result = $wpdb->insert(
         $tbl,
         array(

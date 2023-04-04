@@ -12,6 +12,10 @@ class ksk3d_functions_visually{
   ];
   
   static function pre_convert_data_bgexec($userID ,$pjt_id ,$dataset){
+    ksk3d_log("pre_convert_data_bgexec() START. ==============================");
+    ksk3d_log("userID: $userID,  pjt_id: $pjt_id");
+    ksk3d_log(json_encode($dataset));
+
     $text = "";
     global $wpdb;
 
@@ -21,9 +25,30 @@ class ksk3d_functions_visually{
     $tbl_name = $wpdb->prefix .KSK3D_TABLE_ATTRIBUTE;
     $sql = "SELECT * FROM {$tbl_name} WHERE user_id={$userID} and file_id={$dataset['dataset_id2']} order by attrib_id;";
     ksk3d_console_log($sql);
+
+    ksk3d_log('属性取得SQL:');
+    ksk3d_log($sql);
+
     $attrib = $wpdb->get_results($sql, ARRAY_A);
     ksk3d_console_log($attrib);
-    $result = ksk3d_citygml23DTiles_ex($dataset['file_id'] ,true ,$attrib);
+    
+    ksk3d_log('属性取得SQL結果一覧:');
+    ksk3d_log(json_encode($attrib));
+    
+    try
+    {
+      $result = ksk3d_citygml23DTiles_ex($dataset['file_id'] ,true ,$attrib);
+    }
+    catch(Exception $ex)
+    {
+      $showTxt = "ksk3d_citygml23DTiles_ex() ERROR: ".json_encode(array('msg'=>utf8_encode($ex->getMessage())), JSON_UNESCAPED_UNICODE);
+      ksk3d_log($showTxt);
+      return $showTxt;
+    }
+    ksk3d_log("ksk3d_citygml23DTiles_ex() result: ".json_encode($result, JSON_UNESCAPED_UNICODE));
+    ksk3d_log('$dataset[\'file_id\']: '.$dataset['file_id']);
+    ksk3d_log('$attrib: '. json_encode($attrib));
+    
     $text .= $result[0];
     $file_id2 = $result[1];
     
@@ -51,6 +76,7 @@ class ksk3d_functions_visually{
     ksk3d_log( "sql:" .$sql );
     $wpdb->query($sql);
 
+    ksk3d_log("pre_convert_data_bgexec() END. ==============================");
     return $text;
   }
   
