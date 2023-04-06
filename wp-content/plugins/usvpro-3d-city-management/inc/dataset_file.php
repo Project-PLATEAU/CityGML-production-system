@@ -19,8 +19,25 @@ class ksk3d_dataset_file{
 
     global $wpdb;
     $sql = "INSERT INTO {$tbl_geom} (`the_geom`,z) VALUES (ST_GeomFromText('MULTIPOLYGON(((" .$coord .")))', 4326),1);";
-    ksk3d_log( "sql:" .$sql );
-    $wpdb->query($sql);
+    //ksk3d_log( "sql:" .$sql );
+    $sqlResult = $wpdb->query($sql);
+
+    ksk3d_console_log(array(
+      'function' => 'file2mesh',
+      '$file1'=> $file1,
+      '$new_id'=> $new_id,
+      '$dmy1'=> $dmy1,
+      '$dmy2'=> $dmy2,
+      '$sw_header'=> $sw_header,
+      '$user_id' => $user_id,
+      '$tbl_geom' => $tbl_geom,
+      '$filepath' => $filepath,
+      '$fileinfo' => $fileinfo,
+      '$box' => $box,
+      '$coord' => $coord,
+      '$sql' => $sql,
+      '$sqlResult' => $sqlResult
+    ));
 
     return true;
   }

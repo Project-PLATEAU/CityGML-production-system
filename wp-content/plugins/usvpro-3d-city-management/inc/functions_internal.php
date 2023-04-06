@@ -83,53 +83,67 @@ class ksk3d_functions_internal{
     return $text;
   }
 
-  static function export_mesh_citygml($file_id ,$dr2 ,$dmy ,$output_option){
+  // コメント追加
+  /**
+   * CityGML出力
+   */
+  static function export_mesh_citygml($file_id, $dr2, $dmy, $output_option)
+  {
     $user_id = ksk3d_get_current_user_id();
     $set_feature = $output_option[0];
     $set_attrib = $output_option[1];
 
-    ksk3d_console_log("set_attrib");
-    ksk3d_console_log($set_attrib);
+    ksk3d_console_log(array(
+      'function' => 'export_mesh_citygml',
+      'params' => array(
+        '$file_id' => $file_id,
+        '$dr2' => $dr2,
+        '$dmy' => $dmy,
+        '$output_option' => $output_option
+      )
+    ));
 
     global $wpdb;
-    $tbl_name = $wpdb->prefix .KSK3D_TABLE_ATTRIBUTE_TPL_VALUE;
-    $sql="";
+    $tbl_name = $wpdb->prefix . KSK3D_TABLE_ATTRIBUTE_TPL_VALUE;
+    $sql = "";
     $ct = array();
     $set_attrib2 = array();
-    foreach($set_attrib as $attrib){
-      ksk3d_console_log("attrib");
-      ksk3d_console_log($attrib);
-      ksk3d_console_log("tag_name:".$attrib['tag_name']);
-      $sql = "SELECT rank FROM {$tbl_name} WHERE tag_name = '".$attrib["tag_name"]."';";
-      ksk3d_console_log("sql:".$sql);
-      
+    foreach ($set_attrib as $attrib) {
+      //ksk3d_console_log("attrib");
+      //ksk3d_console_log($attrib);
+      //ksk3d_console_log("tag_name:".$attrib['tag_name']);
+      $sql = "SELECT rank FROM {$tbl_name} WHERE tag_name = '" . $attrib["tag_name"] . "';";
+      //ksk3d_console_log("sql:".$sql);
+
       $rank = $wpdb->get_var($sql);
-      if (empty($rank)){
-        if (preg_match('/gml:/',$attrib["tag_name"])==1){
-          $rank=100;
-        } else if (preg_match('/core:/',$attrib["tag_name"])==1){
-          $rank=200;
-        } else if (preg_match('/gen:/',$attrib["tag_name"])==1){
-          $rank=300;
-        } else if (preg_match('/bldg:/',$attrib["tag_name"])==1){
-          $rank=400;
-        } else if (preg_match('/uro:/',$attrib["tag_name"])==1){
-          $rank=500;
+      if (empty($rank)) {
+        if (preg_match('/gml:/', $attrib["tag_name"]) == 1) {
+          $rank = 100;
+        } else if (preg_match('/core:/', $attrib["tag_name"]) == 1) {
+          $rank = 200;
+        } else if (preg_match('/gen:/', $attrib["tag_name"]) == 1) {
+          $rank = 300;
+        } else if (preg_match('/bldg:/', $attrib["tag_name"]) == 1) {
+          $rank = 400;
+        } else if (preg_match('/uro:/', $attrib["tag_name"]) == 1) {
+          $rank = 500;
         } else {
-          $rank=9999;
+          $rank = 9999;
         }
       }
-      while (isset($ct) and isset($ct[$rank]) and $ct[$rank]==1){$rank++;}
-      $ct[$rank]=1;
-      ksk3d_console_log("rank:".$rank);
+      while (isset($ct) and isset($ct[$rank]) and $ct[$rank] == 1) {
+        $rank++;
+      }
+      $ct[$rank] = 1;
+      ksk3d_console_log("rank:" . $rank);
       $set_attrib2[$rank] = $attrib;
     }
     ksort($set_attrib2);
-      ksk3d_console_log("set_attrib2");
-      ksk3d_console_log($set_attrib2);
-    
+    ksk3d_console_log("set_attrib2");
+    ksk3d_console_log($set_attrib2);
 
-    if (preg_match('/gml:Solid/i' ,$set_feature['geom'])==1){
+
+    if (preg_match('/gml:Solid/i', $set_feature['geom']) == 1) {
       $dim = 3;
       $tag_path2 = "/gml:exterior/gml:CompositeSurface";
     } else {
@@ -137,85 +151,102 @@ class ksk3d_functions_internal{
       $tag_path2 = "";
     }
 
-    $flg_xy_replace = (preg_match('/\/6668|\/6697/i' ,$set_feature['srs'])==1);
+    $flg_xy_replace = (preg_match('/\/6668|\/6697/i', $set_feature['srs']) == 1);
 
-    $tbl_geom = KSK3D_TABLE_GEOM .$user_id ."_" .$file_id;
+    $tbl_geom = KSK3D_TABLE_GEOM . $user_id . "_" . $file_id;
 
-    static::update_meshcode($user_id ,$file_id ,$set_feature['mesh']);
+    static::update_meshcode($user_id, $file_id, $set_feature['mesh']);
 
     ksk3d_dataset_internal::update_geom_ForceLHR($tbl_geom);
 
     $meshcodes = ksk3d_dataset_internal::used_meshcode_list($tbl_geom);
-    ksk3d_console_log($meshcodes);
+    ksk3d_console_log(array(
+      '$tbl_geom' => $tbl_geom,
+      '$meshcodes' => $meshcodes
+    ));
 
     $sel = "ST_AsTEXT(A.the_geom) as the_geom,ST_AsTEXT(A.hole) as hole,A.z,A.m";
-    $tbl_attrib = KSK3D_TABLE_ATTRIB .$user_id ."_" .$file_id;
+    $tbl_attrib = KSK3D_TABLE_ATTRIB . $user_id . "_" . $file_id;
     $tbl_attrib_exists = ksk3d_fn_db::tbl_exists($tbl_attrib);
-    if ($tbl_attrib_exists){
+    if ($tbl_attrib_exists) {
       $join = "LEFT OUTER JOIN {$tbl_attrib} B ON A.id=B.id";
       $sel .= ",B.*";
     } else {
       $join = "";
     }
-    mkdir ($dr2."/Intermediate/");
-    foreach($meshcodes as $meshcode){
+    mkdir($dr2 . "/Intermediate/");
+    foreach ($meshcodes as $meshcode) {
       $meshcode = $meshcode['meshcode'];
-      
+
+      // テンプレートを読込
       $doc = new DOMDocument();
       $doc->preserveWhiteSpace = false;
       $doc->formatOutput = true;
-      $doc->load(KSK3D_PATH ."/storage/citygml/" .$set_feature['template'] .".gml");
+      $doc->load(KSK3D_PATH . "/storage/citygml/" . $set_feature['template'] . ".gml");
       $xpath = new DOMXpath($doc);
 
+      // 各種ノードを取得
       $CityModel = $doc->getElementsByTagName('CityModel')->item(0);
       $cityObjectMember_1 = $doc->getElementsByTagName('cityObjectMember')->item(0);
       $str_cityObjectMember = $cityObjectMember_1->nodeName;
+      // 子要素を削除する（テンプレートの元を削除？）
       $CityModel->removeChild($cityObjectMember_1);
-      
-      $tag_path =  $set_feature['lod'] ."/" .$set_feature['geom'] .$tag_path2;
-      
-      $xpath->query("//gml:Envelope")->item(0)->setAttribute("srsName" ,$set_feature['srs']);
 
-      if (empty($meshcode)){
+      // 
+      $tag_path =  $set_feature['lod'] . "/" . $set_feature['geom'] . $tag_path2;
+
+      // srsを設定
+      $xpath->query("//gml:Envelope")->item(0)->setAttribute("srsName", $set_feature['srs']);
+
+      if (empty($meshcode)) {
         $wh = "A.meshcode is null";
       } else {
-        $wh = "A.meshcode=".$meshcode;
+        $wh = "A.meshcode=" . $meshcode;
       }
 
-      $box = ksk3d_dataset_internal::sel_box("{$tbl_geom} A WHERE {$wh}" ,$flg_xy_replace);
-      $xpath->query("//gml:Envelope/gml:lowerCorner")->item(0)->nodeValue = $box['xmin'] ." " .$box['ymin'] ." " .$box['zmin'];
-      $xpath->query("//gml:Envelope/gml:upperCorner")->item(0)->nodeValue = $box['xmax'] ." " .$box['ymax'] ." " .$box['zmax'];
+      // gml:Envelopeの設定
+      $box = ksk3d_dataset_internal::sel_box("{$tbl_geom} A WHERE {$wh}", $flg_xy_replace);
+      $xpath->query("//gml:Envelope/gml:lowerCorner")->item(0)->nodeValue = $box['xmin'] . " " . $box['ymin'] . " " . $box['zmin'];
+      $xpath->query("//gml:Envelope/gml:upperCorner")->item(0)->nodeValue = $box['xmax'] . " " . $box['ymax'] . " " . $box['zmax'];
 
+      // ジオメトリを取得
       $rows = ksk3d_fn_db::sel("SELECT {$sel} FROM {$tbl_geom} A {$join} WHERE {$wh} ORDER BY A.id");
-      foreach($rows as $row){
-        $base_node = ksk3d_dataset_gml::node_appendChild_path($doc ,$CityModel ,$str_cityObjectMember ."/" .$set_feature['feature']);
-        $geom_node = ksk3d_dataset_gml::node_appendChild_path($doc ,$base_node ,$tag_path);
+      // ジオメトリに対する処理
+      foreach ($rows as $row) {
+        $base_node = ksk3d_dataset_gml::node_appendChild_path($doc, $CityModel, $str_cityObjectMember . "/" . $set_feature['feature']);
+        $geom_node = ksk3d_dataset_gml::node_appendChild_path($doc, $base_node, $tag_path);
 
-        if ($dim==3){
-          ksk3d_dataset_citygml::insert_geom_3d($doc ,$geom_node ,$row['the_geom'] ,$row['hole'] ,$row['z'] ,$row['m'] ,$flg_xy_replace);
+        if ($dim == 3) {
+          ksk3d_dataset_citygml::insert_geom_3d($doc, $geom_node, $row['the_geom'], $row['hole'], $row['z'], $row['m'], $flg_xy_replace);
         } else {
-          ksk3d_dataset_citygml::insert_geom_2d($doc ,$geom_node ,$row['the_geom'] ,$row['hole'] ,$row['z'] ,$flg_xy_replace);
+          ksk3d_dataset_citygml::insert_geom_2d($doc, $geom_node, $row['the_geom'], $row['hole'], $row['z'], $flg_xy_replace);
         }
-        foreach($set_attrib2 as $attrib){
+        
+        // （予想）追加属性を追加していく？対象はstringAttribute等やKeyValuePair？
+        foreach ($set_attrib2 as $attrib) {
           ksk3d_console_log("attrib");
           ksk3d_console_log($attrib);
-          if (
-            ($row[$attrib['attrib_field']]!='')
-            and (!empty($attrib['tag_name']))
-          ){
-            ksk3d_dataset_citygml::insert_attrib($doc ,$base_node ,$attrib['tag_name'] ,$row[$attrib['attrib_field']] ,$attrib['attrib_unit'] ,$attrib['codelist_name'] ,$attrib['attrib_name']);
+          if (($row[$attrib['attrib_field']] != '') and (!empty($attrib['tag_name']))) {
+            ksk3d_dataset_citygml::insert_attrib(
+              $doc,
+              $base_node,
+              $attrib['tag_name'],
+              $row[$attrib['attrib_field']],
+              $attrib['attrib_unit'],
+              $attrib['codelist_name'],
+              $attrib['attrib_name']
+            );
           }
         }
-
       }
 
-      $f2 = preg_replace('/\[meshcode\]/' ,$meshcode ,$set_feature['filename']);
-      $doc->save($dr2."/Intermediate/".$f2);
+      // ファイルのメッシュコードを置換してファイル名とする
+      $f2 = preg_replace('/\[meshcode\]/', $meshcode, $set_feature['filename']);
+      $doc->save($dr2 . "/Intermediate/" . $f2);
 
-      ksk3d_functions_citygml::tagsort($dr2."/Intermediate/".$f2, $dr2."/".$f2);
-      
+      ksk3d_functions_citygml::tagsort($dr2 . "/Intermediate/" . $f2, $dr2 . "/" . $f2);
     }
-    ksk3d_deltree($dr2."/Intermediate/");
+    ksk3d_deltree($dr2 . "/Intermediate/");
   }
 
   static function join_attrib($src_id ,$new_id ,$input_option ,$output_option){

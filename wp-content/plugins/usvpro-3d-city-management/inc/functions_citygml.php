@@ -187,8 +187,9 @@ class ksk3d_functions_citygml{
     return true;
   }
 
-  static function citygml2DB($filename ,$tbl_attrib ,$tbl_geom ,$set_attrib) {
-    ksk3d_console_log("filename1:".$filename);
+  static function citygml2DB($filename, $tbl_attrib, $tbl_geom, $set_attrib)
+  {
+    ksk3d_console_log("filename1:" . $filename);
     global $wpdb;
 
     $i = 0;
@@ -197,12 +198,13 @@ class ksk3d_functions_citygml{
     $sql_g = "";
 
     $sql_a_field = "";
-    foreach($set_attrib as $attrib){
-      if (preg_match('/geometry/i' ,$attrib["attrib_type"])==0){
-        $sql_a_field .= $attrib["field_name"] .",";
+    // GEOMETRY型以外の属性名を取得してSQL用のフィールド名リストとする
+    foreach ($set_attrib as $attrib) {
+      if (preg_match('/geometry/i', $attrib["attrib_type"]) == 0) {
+        $sql_a_field .= $attrib["field_name"] . ",";
       }
     }
-    $sql_a_field = substr($sql_a_field ,0 ,-1);
+    $sql_a_field = substr($sql_a_field, 0, -1);
     ksk3d_console_log("sql_a");
     ksk3d_console_log($sql_a_field);
 
@@ -211,196 +213,234 @@ class ksk3d_functions_citygml{
     $cityObjectMember = $doc->getElementsByTagName('cityObjectMember');
     $xpath = new DOMXpath($doc);
 
-    foreach ($cityObjectMember as $cityObject){
-      $feature_path = $cityObject->getNodePath()."/";
+    foreach ($cityObjectMember as $cityObject) {
+      $feature_path = $cityObject->getNodePath() . "/";
       $sql_a_value = "";
-      $coord = "";
+      // exteriorの座標リスト
+      $coord = ""; 
+      // interiorの座標リスト
       $coord2 = "";
       $zmin = null;
       $zmax = null;
       $zmin1 = "";
       $zmax1 = "";
-      foreach($set_attrib as $attrib){
-        if (preg_match('/geometry/i' ,$attrib['attrib_type'])==1){
-          $tag_path = preg_replace('/^.+?\//' ,'.//' ,$attrib['tag_path']);
-          $geom = $xpath->query($tag_path .'//gml:exterior//gml:posList' ,$cityObject);
-          if (count($geom)>0){
+      foreach ($set_attrib as $attrib) {
+        if (preg_match('/geometry/i', $attrib['attrib_type']) == 1) {
+          // ジオメトリ型だった場合
+
+          // タグのパスの先頭要素を置換 bldg:Building/bldg:lod1Solid -> .//bldg:lod1Solid
+          $tag_path = preg_replace('/^.+?\//', './/', $attrib['tag_path']);
+          // パスを追加 bldg:Building/bldg:lod1Solid -> .//bldg:lod1Solid//gml:exterior//gml:posList
+          // exteriorのposListを検索
+          $geom = $xpath->query($tag_path . '//gml:exterior//gml:posList', $cityObject);
+          if (count($geom) > 0) {
             $coord = "";
             $coord2 = "";
-            if (preg_match('{/gml:exterior/.+/gml:exterior/}',$geom[0]->getNodePath())==1){
+            if (preg_match('{/gml:exterior/.+/gml:exterior/}', $geom[0]->getNodePath()) == 1) {
+              // exteriorの場合？
+              
+              // 先頭のデータのみ処理
               $g = $geom[0];
-              $xy = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/' ,'${2} ${1},' ,trim($g->nodeValue)." ");
-              $xy = preg_replace('/^,|,(\t*?)$/' ,'' ,$xy);
+              // XYを反転させて、Zを消して、XYのカンマ区切りにする（X Y Z X Y Zという並びだった場合Y X,Y Xとなる）
+              $xy = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/', '${2} ${1},', trim($g->nodeValue) . " ");
+              $xy = preg_replace('/^,|,(\t*?)$/', '', $xy);
               $coord = "({$xy}),";
 
-              foreach ($geom as $g){
-                $z = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/' ,'${3},' ,trim($g->nodeValue)." ");
-                $z_array = explode(',' ,substr($z,0,-1));
+              // ジオメトリ全てに対して処理
+              foreach ($geom as $g) {
+                // Zのみのデータを作成する
+                $z = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/', '${3},', trim($g->nodeValue) . " ");
+                $z_array = explode(',', substr($z, 0, -1));
+                // Zの最大最小を求める
                 $zmin1 = min($z_array);
                 $zmax1 = max($z_array);
-                if (is_null($zmin)){
-                  $zmin = $zmin1; 
-                  $zmax = $zmax1; 
+                if (is_null($zmin)) {
+                  $zmin = $zmin1;
+                  $zmax = $zmax1;
                 } else {
-                  if ($zmin > $zmin1) {$zmin = $zmin1;}
-                  if ($zmax < $zmax1) {$zmax = $zmax1;}
-                }
-              }
-              $tag_path = preg_replace('/^.+?\//' ,'.//' ,$attrib['tag_path']);
-              $geom = $xpath->query('.//gml:interior//gml:posList' ,$g->parentNode->parentNode->parentNode->parentNode);
-              if (count($geom)>0){
-                $g = $geom[0];
-                $xy = implode("\n" ,array_reverse(explode("\n" ,trim($g->nodeValue))));
-                $xy = preg_replace("/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/" ,'${2} ${1},' ,$xy." ");
-                $xy = preg_replace('/^,|,(\t*?)$/' ,'' ,$xy);
-                $coord2 = "({$xy})";
-
-                foreach ($geom as $g){
-                  $z = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/' ,'${3},' ,trim($g->nodeValue)." ");
-                  $z_array = explode(',' ,substr($z,0,-1));
-                  $zmin1 = min($z_array);
-                  $zmax1 = max($z_array);
-                  if (is_null($zmin)){
-                    $zmin = $zmin1; 
-                    $zmax = $zmax1; 
-                  } else {
-                    if ($zmin > $zmin1) {$zmin = $zmin1;}
-                    if ($zmax < $zmax1) {$zmax = $zmax1;}
+                  if ($zmin > $zmin1) {
+                    $zmin = $zmin1;
+                  }
+                  if ($zmax < $zmax1) {
+                    $zmax = $zmax1;
                   }
                 }
-                $coord2 = "ST_GeomFromText('MULTIPOLYGON((" .$coord2 ."))', 4326)";
+              }
+              // interiorのposListを検索
+              $tag_path = preg_replace('/^.+?\//', './/', $attrib['tag_path']);
+              $geom = $xpath->query('.//gml:interior//gml:posList', $g->parentNode->parentNode->parentNode->parentNode);
+              if (count($geom) > 0) {
+                $g = $geom[0];
+                $xy = implode("\n", array_reverse(explode("\n", trim($g->nodeValue))));
+                $xy = preg_replace("/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/", '${2} ${1},', $xy . " ");
+                $xy = preg_replace('/^,|,(\t*?)$/', '', $xy);
+                $coord2 = "({$xy})";
+
+                foreach ($geom as $g) {
+                  $z = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/', '${3},', trim($g->nodeValue) . " ");
+                  $z_array = explode(',', substr($z, 0, -1));
+                  $zmin1 = min($z_array);
+                  $zmax1 = max($z_array);
+                  if (is_null($zmin)) {
+                    $zmin = $zmin1;
+                    $zmax = $zmax1;
+                  } else {
+                    if ($zmin > $zmin1) {
+                      $zmin = $zmin1;
+                    }
+                    if ($zmax < $zmax1) {
+                      $zmax = $zmax1;
+                    }
+                  }
+                }
+                $coord2 = "ST_GeomFromText('MULTIPOLYGON((" . $coord2 . "))', 4326)";
               } else {
                 $coord2 = "NULL";
               }
             } else {
-              foreach ($geom as $g){
-                $z = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/' ,'${3},' ,trim($g->nodeValue)." ");
-                $z_array = explode(',' ,substr($z,0,-1));
+              // exterior以外の場合？
+
+              foreach ($geom as $g) {
+                $z = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/', '${3},', trim($g->nodeValue) . " ");
+                $z_array = explode(',', substr($z, 0, -1));
                 $zmin1 = min($z_array);
                 $zmax1 = max($z_array);
-                if (is_null($zmin)){
-                  $zmin = $zmin1; 
-                  $zmax = $zmax1; 
+                if (is_null($zmin)) {
+                  $zmin = $zmin1;
+                  $zmax = $zmax1;
                 } else {
-                  if ($zmin > $zmin1) {$zmin = $zmin1;}
-                  if ($zmax < $zmax1) {$zmax = $zmax1;}
+                  if ($zmin > $zmin1) {
+                    $zmin = $zmin1;
+                  }
+                  if ($zmax < $zmax1) {
+                    $zmax = $zmax1;
+                  }
                 }
-                $xy = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/' ,'${2} ${1},' ,trim($g->nodeValue)." ");
-                $xy = preg_replace('/^,|,(\t*?)$/' ,'' ,$xy);
+
+                // こちらは全ての座標要素を格納している？
+                $xy = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/', '${2} ${1},', trim($g->nodeValue) . " ");
+                $xy = preg_replace('/^,|,(\t*?)$/', '', $xy);
                 $coord .= "({$xy}),";
               }
-            
-              $tag_path = preg_replace('/^.+?\//' ,'.//' ,$attrib['tag_path']);
-              $geom = $xpath->query($tag_path .'//gml:interior//gml:posList' ,$cityObject);
-              if (count($geom)>0){
-                foreach ($geom as $g){
-                  $z = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/' ,'${3},' ,trim($g->nodeValue)." ");
-                  $z_array = explode(',' ,substr($z,0,-1));
+
+              $tag_path = preg_replace('/^.+?\//', './/', $attrib['tag_path']);
+              $geom = $xpath->query($tag_path . '//gml:interior//gml:posList', $cityObject);
+              if (count($geom) > 0) {
+                foreach ($geom as $g) {
+                  $z = preg_replace('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/', '${3},', trim($g->nodeValue) . " ");
+                  $z_array = explode(',', substr($z, 0, -1));
                   $zmin1 = min($z_array);
                   $zmax1 = max($z_array);
-                  if (is_null($zmin)){
-                    $zmin = $zmin1; 
-                    $zmax = $zmax1; 
+                  if (is_null($zmin)) {
+                    $zmin = $zmin1;
+                    $zmax = $zmax1;
                   } else {
-                    if ($zmin > $zmin1) {$zmin = $zmin1;}
-                    if ($zmax < $zmax1) {$zmax = $zmax1;}
+                    if ($zmin > $zmin1) {
+                      $zmin = $zmin1;
+                    }
+                    if ($zmax < $zmax1) {
+                      $zmax = $zmax1;
+                    }
                   }
-                  
-                  $xy = implode("\n" ,array_reverse(explode("\n" ,trim($g->nodeValue))));
-                  $xy = preg_replace("/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/" ,'${2} ${1},' ,$xy." ");
-                  $xy = preg_replace('/^,|,(\t*?)$/' ,'' ,$xy);
+
+                  $xy = implode("\n", array_reverse(explode("\n", trim($g->nodeValue))));
+                  $xy = preg_replace("/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/", '${2} ${1},', $xy . " ");
+                  $xy = preg_replace('/^,|,(\t*?)$/', '', $xy);
                   $coord2 .= "({$xy}),";
                 }
-                $coord2 = "ST_GeomFromText('MULTIPOLYGON((" .substr($coord2 ,0 ,-1) ."))', 4326)";
+                $coord2 = "ST_GeomFromText('MULTIPOLYGON((" . substr($coord2, 0, -1) . "))', 4326)";
               } else {
                 $coord2 = "NULL";
               }
-              
-              if (is_null($zmin)){
+
+              if (is_null($zmin)) {
                 $zmin = 0;
                 $zmax = 0;
               }
             }
           }
         } else {
-          if (isset($attrib['tag_attrib']) && !empty($attrib['tag_attrib'])){
-              $tag_path = preg_replace('/(Attribute)\[.*?\]/i' ,'$1[@'.$attrib['tag_attrib'].'=\''.$attrib['tag_attrib_name'].'\']' ,$attrib['tag_path']);
-              $tag_path = preg_replace('/^.+?\//' ,'.//' ,$tag_path);
-              $query = $xpath->query($tag_path ,$cityObject);
-              if ($query->length > 0){
-                $tag = $query->item(0)->nodeValue;
-              } else {
-                $tag = "NULL";
-              }
+          // GEOMETRY型以外の場合
+          if (isset($attrib['tag_attrib']) && !empty($attrib['tag_attrib'])) {
+            $tag_path = preg_replace('/(Attribute)\[.*?\]/i', '$1[@' . $attrib['tag_attrib'] . '=\'' . $attrib['tag_attrib_name'] . '\']', $attrib['tag_path']);
+            $tag_path = preg_replace('/^.+?\//', './/', $tag_path);
+            $query = $xpath->query($tag_path, $cityObject);
+            if ($query->length > 0) {
+              $tag = $query->item(0)->nodeValue;
+            } else {
+              $tag = "NULL";
+            }
           } else {
-            $path = preg_replace("/^.+?\//" ,'.//' ,$attrib['tag_path']);
-            $query = $xpath->query($path ,$cityObject);
-            if ($query->length > 0){
+            $path = preg_replace("/^.+?\//", './/', $attrib['tag_path']);
+            $query = $xpath->query($path, $cityObject);
+            if ($query->length > 0) {
               $tag = $query->item(0)->nodeValue;
             } else {
               $tag = "NULL";
             }
           }
-          if (preg_match('/char/i' ,$attrib["attrib_type"]) and $tag != "NULL"){
-            $tag = "'" .$tag ."'";
+          if (preg_match('/char/i', $attrib["attrib_type"]) and $tag != "NULL") {
+            $tag = "'" . $tag . "'";
           }
-          $sql_a_value .= "," .$tag ;
+          $sql_a_value .= "," . $tag;
         }
       }
-      if (!empty($coord)){
+      if (!empty($coord)) {
         $i++;
 
-        if (is_null($zmin)){
+        if (is_null($zmin)) {
           $zmin = 0;
           $zmax = 0;
         }
-
-        $sql_g .= "\n(ST_GeomFromText('MULTIPOLYGON((" .substr($coord ,0 ,-1) ."))', 4326) ,{$coord2} ,'{$zmin}' ,'" .($zmax-$zmin) ."'),";
-        $sql_a .= "\n(" .substr($sql_a_value ,1) ."),";
+        
+        // GEOMETRY型をWKTに変換して挿入するテキストを作成
+        $sql_g .= "\n(ST_GeomFromText('MULTIPOLYGON((" . substr($coord, 0, -1) . "))', 4326) ,{$coord2} ,'{$zmin}' ,'" . ($zmax - $zmin) . "'),";
+        $sql_a .= "\n(" . substr($sql_a_value, 1) . "),";
       }
 
-      if ($i>99) {
-        $i2+=$i;
-        $i=0;
-        if (!empty($sql_a_field)){
-        if (!empty($sql_g)){
-          $sql_a = "INSERT INTO {$tbl_attrib} ({$sql_a_field}) VALUES " .substr($sql_a ,0 ,-1);
-          ksk3d_log( "sql:" .$sql_a );
+      if ($i > 99) {
+        $i2 += $i;
+        $i = 0;
+        if (!empty($sql_a_field)) {
+          if (!empty($sql_g)) {
+            $sql_a = "INSERT INTO {$tbl_attrib} ({$sql_a_field}) VALUES " . substr($sql_a, 0, -1);
+            ksk3d_log("sql:" . $sql_a);
+            $wpdb->query($sql_a);
+            $sql_a = "";
+            $sql_g = "INSERT INTO {$tbl_geom} (the_geom ,hole ,z ,m) VALUES " . substr($sql_g, 0, -1);
+            ksk3d_log("sql:" . $sql_g);
+            $wpdb->query($sql_g);
+            $sql_g = "";
+          }
+        }
+      }
+    }
+    if ($i > 0) {
+      $i2 += $i;
+      if (!empty($sql_a_field)) {
+        if (!empty($sql_g)) {
+          $sql_a = "INSERT INTO {$tbl_attrib} ({$sql_a_field}) VALUES " . substr($sql_a, 0, -1);
+          ksk3d_log("sql:" . $sql_a);
           $wpdb->query($sql_a);
-          $sql_a = "";
-          $sql_g = "INSERT INTO {$tbl_geom} (the_geom ,hole ,z ,m) VALUES " .substr($sql_g ,0 ,-1);
-          ksk3d_log( "sql:" .$sql_g );
+          $sql_g = "INSERT INTO {$tbl_geom} (the_geom ,hole ,z ,m) VALUES " . substr($sql_g, 0, -1);
+          ksk3d_log("sql:" . $sql_g);
           $wpdb->query($sql_g);
-          $sql_g = "";
-        }
         }
       }
     }
-    if ($i>0){
-      $i2+=$i;
-      if (!empty($sql_a_field)){
-      if (!empty($sql_g)){
-        $sql_a = "INSERT INTO {$tbl_attrib} ({$sql_a_field}) VALUES " .substr($sql_a ,0 ,-1);
-        ksk3d_log( "sql:" .$sql_a );
-        $wpdb->query($sql_a);
-        $sql_g = "INSERT INTO {$tbl_geom} (the_geom ,hole ,z ,m) VALUES " .substr($sql_g ,0 ,-1);
-        ksk3d_log( "sql:" .$sql_g );
-        $wpdb->query($sql_g);
-      }
-      }
-    }
-    $message = "データを".$i2 ."行追加しました。<br>\n";
-    ksk3d_log( "insert:{$i2}行追加しました。");
+    $message = "データを" . $i2 . "行追加しました。<br>\n";
+    ksk3d_log("insert:{$i2}行追加しました。");
 
     return array(
       true,
-      'message'=>$message
+      'message' => $message
     );
-
   }
 
   static function cityobject2building($file1 ,$file2 ,$set_attrib){
-    ksk3d_log("fn:ksk3d_citygml::cityobject2building:({$file1} ,{$file2})");
+    ksk3d_log("fn:ksk3d_citygml::cityobject2building:");
+    ksk3d_log("  \$file1: $file1");
+    ksk3d_log("  \$file2: $file2");
     $template = KSK3D_PATH ."/storage/citygml/building.gml";
     ksk3d_console_log("template:".$template);
     $doc2 = new DOMDocument();

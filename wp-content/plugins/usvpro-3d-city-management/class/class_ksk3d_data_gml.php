@@ -333,11 +333,16 @@ class ksk3d_data_gml extends ksk3d_view_list{
     global $wpdb;
     $tbl_name = $wpdb->prefix .static::$tbl;
 
-    $sql = "SELECT file_path,file_name,file_format FROM {$tbl_name} WHERE id = %d;";
+    // zipファイルの解凍処理の為ファイルIDを取得するように変更
+    //$sql = "SELECT file_path,file_name,file_format FROM {$tbl_name} WHERE id = %d;";
+    $sql = "SELECT file_path,file_name,file_format,file_id FROM {$tbl_name} WHERE id = %d;";
     $prepared = $wpdb->prepare($sql, $form_id);
     $result = $wpdb->get_row($prepared ,ARRAY_A);
     $file1 = $result['file_path']."/".$result['file_name'];
     ksk3d_console_log("file:".$file1);
+
+    // zipファイルの解凍処理追加
+    ksk3d_functions_zip::fileid_extractTo($result['file_id']);
 
     $text .=<<< EOL
       <table class="ksk3d_style_table_list wp-list-table widefat striped posts">
@@ -363,8 +368,8 @@ EOL
       $sql = "";
       foreach(static::$field_ref as $list){
         if (($list['tab']==0) or ($list['tab']==$tab)){
-          if (!empty($list{'dbField'})){
-            $sql .= ",".$list{'dbField'};
+          if (!empty($list['dbField'])){
+            $sql .= ",".$list['dbField'];
           }
         }
       }
@@ -373,27 +378,28 @@ EOL
       $wh = "";
 
       $i = 0;
-      if (!empty($result)){
-        foreach($result as $gml){
-          $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+      if (!empty($result)) {
+        foreach ($result as $gml) {
+          //$sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+          $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE '{$gml['tag_path']}' like CONCAT('%',tag_name) {$wh};";
           $rows = $wpdb->get_results($sql, ARRAY_A);
-          foreach(static::$field_ref as $list){
-            if (($list['tab']==0) or ($list['tab']==$tab)){
-              if (empty($list{'gmlValue'}) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))){
+          foreach (static::$field_ref as $list) {
+            if (($list['tab'] == 0) or ($list['tab'] == $tab)) {
+              if (empty($list['gmlValue']) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))) {
                 $m = $list['dbField'];
-                if (count($rows)>0){
+                if (count($rows) > 0) {
                   $v = $rows[0]["{$m}"];
                 } else {
-                  $v = preg_replace('/\[_n%\]/' ,($i+1) ,$list['default']);
+                  $v = preg_replace('/\[_n%\]/', ($i + 1), $list['default']);
                 }
-                if ($m == 'attrib_digit'){
-                  if ($v < strlen($gml['attrib_value'])*2){
-                    $v = round(strlen($gml['attrib_value'])*2 ,-1 ,PHP_ROUND_HALF_UP);
+                if ($m == 'attrib_digit') {
+                  if ($v < strlen($gml['attrib_value']) * 2) {
+                    $v = round(strlen($gml['attrib_value']) * 2, -1, PHP_ROUND_HALF_UP);
                   }
                 }
               } else {
                 $m = $list['gmlValue'];
-                if (isset($gml["{$m}"])){
+                if (isset($gml["{$m}"])) {
                   $v = $gml[$m];
                 } else {
                   $v = "";
@@ -413,7 +419,7 @@ EOL
       $text .= "        <tr>\n";
       foreach(static::$field_ref as $list){
         if (($list['tab']==0) or ($list['tab']==$tab)){
-          if (empty($list{'gmlValue'}) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))){
+          if (empty($list['gmlValue']) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))){
             $m = $list['dbField'];
             $v = $attrib["{$m}"];
           } else {

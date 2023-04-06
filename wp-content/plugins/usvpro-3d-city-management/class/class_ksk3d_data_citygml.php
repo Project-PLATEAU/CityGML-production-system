@@ -319,11 +319,20 @@ class ksk3d_data_citygml extends ksk3d_view_list{
     ]
   ];
 
-  static function citygml2db_set_attrib(){
+  static function citygml2db_set_attrib()
+  {
     $page = 'citygml2db_set_attrib';
     $tab = 'citygml2db_set_attrib';
     $form_id = $_POST["form_id"];
-    ksk3d_console_log("form_id:".$form_id);
+    ksk3d_console_log("form_id:" . $form_id);
+    ksk3d_console_log(array(
+      'func' => 'citygml2db_set_attrib()',
+      'data' => array(
+        'page' => $page,
+        'tab' => $tab,
+        'post' => $_POST
+      )
+    ));
 
     $text = static::ksk3d_box_header($page);
 
@@ -332,21 +341,28 @@ class ksk3d_data_citygml extends ksk3d_view_list{
     $text .= static::ksk3d_box_main_info1($form_id);
 
     global $wpdb;
-    $tbl_name = $wpdb->prefix .static::$tbl;
+    $tbl_name = $wpdb->prefix . static::$tbl;
     $sql = "SELECT file_path,file_name,file_format FROM {$tbl_name} WHERE id = %d;";
     $prepared = $wpdb->prepare($sql, $form_id);
-    $result = $wpdb->get_row($prepared ,ARRAY_A);
-    $file1 = $result['file_path']."/".$result['file_name'];
-    ksk3d_console_log("file:".$file1);
+    $result = $wpdb->get_row($prepared, ARRAY_A);
+    $file1 = $result['file_path'] . "/" . $result['file_name'];
+    ksk3d_console_log("file:" . $file1);
+    ksk3d_console_log(array(
+      'func' => 'citygml2db_set_attrib()',
+      'data' => array(
+        '$result' => $result,
+        '$prepared' => $prepared,
+        '$sql' => $sql,
+      )
+    ));
 
-    $text .=<<< EOL
+    $text .= <<< EOL
       <table class="ksk3d_style_table_list wp-list-table widefat striped posts">
         <tr>
-EOL
-;
-    foreach(static::$field_ref as $list){
-      if (($list['tab']==0) or ($list['tab']==$tab)){
-        if ($list['editer']!='hidden'){
+EOL;
+    foreach (static::$field_ref as $list) {
+      if (($list['tab'] == 0) or ($list['tab'] == $tab)) {
+        if ($list['editer'] != 'hidden') {
           $text .= "          <th style=\"{$list['th-style']}\">{$list['displayName']}</th>\n";
         }
       }
@@ -357,43 +373,48 @@ EOL
       $set_attrib = $_POST["set_attrib"];
       ksk3d_console_log($set_attrib);
     } else {
+      // set_attribが無ければ作成する。
       $set_attrib = [];
 
       $result = ksk3d_citygml_test($file1);
+      ksk3d_console_log(array('ksk3d_citygml_test result' => $result));
       $sql = "";
-      foreach(static::$field_ref as $list){
-        if (($list['tab']==0) or ($list['tab']==$tab)){
-          if (!empty($list{'dbField'})){
-            $sql .= ",".$list{'dbField'};
+      foreach (static::$field_ref as $list) {
+        if (($list['tab'] == 0) or ($list['tab'] == $tab)) {
+          if (!empty($list['dbField'])) {
+            $sql .= "," . $list['dbField'];
           }
         }
       }
-      $sql_select = substr($sql ,1);
-      $tbl_ref_tbl = $wpdb->prefix .static::$tbl_ref["{$tab}"]['table'];
+      $sql_select = substr($sql, 1);
+      $tbl_ref_tbl = $wpdb->prefix . static::$tbl_ref["{$tab}"]['table'];
       $wh = "";
 
       $i = 0;
-      if (!empty($result)){
-        foreach($result as $gml){
-          $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+      if (!empty($result)) {
+        foreach ($result as $gml) {
+          // 過去の修正適用
+          //$sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+          $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE \"{$gml['tag_path']}\" like CONCAT('%',tag_name) {$wh};";
+          ksk3d_console_log($sql);
           $rows = $wpdb->get_results($sql, ARRAY_A);
-          foreach(static::$field_ref as $list){
-            if (($list['tab']==0) or ($list['tab']==$tab)){
-              if (empty($list{'gmlValue'}) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))){
+          foreach (static::$field_ref as $list) {
+            if (($list['tab'] == 0) or ($list['tab'] == $tab)) {
+              if (empty($list['gmlValue']) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))) {
                 $m = $list['dbField'];
-                if (count($rows)>0){
+                if (count($rows) > 0) {
                   $v = $rows[0]["{$m}"];
                 } else {
-                  $v = preg_replace('/\[_n%\]/' ,($i+1) ,$list['default']);
+                  $v = preg_replace('/\[_n%\]/', ($i + 1), $list['default']);
                 }
-                if ($m == 'attrib_digit'){
-                  if ($v < strlen($gml['attrib_value'])*2){
-                    $v = round(strlen($gml['attrib_value'])*2 ,-1 ,PHP_ROUND_HALF_UP);
+                if ($m == 'attrib_digit') {
+                  if ($v < strlen($gml['attrib_value']) * 2) {
+                    $v = round(strlen($gml['attrib_value']) * 2, -1, PHP_ROUND_HALF_UP);
                   }
                 }
               } else {
                 $m = $list['gmlValue'];
-                if (isset($gml["{$m}"])){
+                if (isset($gml["{$m}"])) {
                   $v = $gml[$m];
                 } else {
                   $v = "";
@@ -406,27 +427,31 @@ EOL
         }
       }
     }
-    
+
     $i = 0;
     $text2 = "";
-    foreach($set_attrib as $attrib){
+    foreach ($set_attrib as $attrib) {
       $text .= "        <tr>\n";
-      foreach(static::$field_ref as $list){
-        if (($list['tab']==0) or ($list['tab']==$tab)){
-          if (empty($list{'gmlValue'}) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))){
+      foreach (static::$field_ref as $list) {
+        if (($list['tab'] == 0) or ($list['tab'] == $tab)) {
+          if (empty($list['gmlValue']) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))) {
             $m = $list['dbField'];
             $v = $attrib["{$m}"];
           } else {
             $m = $list['gmlValue'];
             $v = $attrib["{$m}"];
           }
-          if (!empty($list['select'])){
+          if (!empty($list['select'])) {
             $text .= "          <td><select name=\"set_attrib[$i][$m]\">\n";
-            $select_option = explode(',' ,$list['select']);
-            if (preg_match('/'.$attrib[$m].'/i' ,$list['select'])==1){
-              foreach($select_option as $s){
-                $test=preg_match('/'.$v.'/i' ,$s);
-                if (preg_match('/'.$v.'/i' ,$s)==1){$tmp=" selected";} else {$tmp="";}
+            $select_option = explode(',', $list['select']);
+            if (preg_match('/' . $attrib[$m] . '/i', $list['select']) == 1) {
+              foreach ($select_option as $s) {
+                $test = preg_match('/' . $v . '/i', $s);
+                if (preg_match('/' . $v . '/i', $s) == 1) {
+                  $tmp = " selected";
+                } else {
+                  $tmp = "";
+                }
                 $text .= "            <option value=\"{$s}\"{$tmp}>{$s}</option>\n";
               }
             } else {
@@ -434,19 +459,21 @@ EOL
             }
             $text .= "          </select></td>\n";
           } else {
-            if (isset($list['shortened']) and $list['shortened']==true){
-              if (mb_strlen($v)>53){
-                $v = mb_substr($v ,0 ,50) ."・・・";
+            if (isset($list['shortened']) and $list['shortened'] == true) {
+              if (mb_strlen($v) > 53) {
+                $v = mb_substr($v, 0, 50) . "・・・";
               }
             }
 
             $v_ = $v;
-            if (mb_strlen($v_)>50){$v_ = mb_substr($v_ ,0 ,50) ."・・・";}
+            if (mb_strlen($v_) > 50) {
+              $v_ = mb_substr($v_, 0, 50) . "・・・";
+            }
 
-            if ($list['editer']=='disabled="disabled"'){
+            if ($list['editer'] == 'disabled="disabled"') {
               $text .= "          <td>{$v_}</td>\n";
               $text2 .= "      <input type=\"hidden\" name=\"set_attrib[$i][$m]\" value=\"{$v}\">\n";
-            } else if (!empty($list['editer'])){
+            } else if (!empty($list['editer'])) {
               $text2 .= "      <input type=\"hidden\" name=\"set_attrib[$i][$m]\" value=\"{$v}\">\n";
             } else {
               $text .= "          <td><input type=\"text\" name=\"set_attrib[$i][$m]\" value=\"{$v}\" {$list['editer']}></td>\n";
@@ -457,7 +484,7 @@ EOL
       $text .= "        </tr>\n";
       $i++;
     }
-    $text .="
+    $text .= "
         </table>
 ";
 
@@ -465,19 +492,19 @@ EOL
       <input type="hidden" name="form_id" value="{$form_id}">
       <input type="hidden" name="set_attrib_ct" value="{$i}">
 {$text2}
-EOL
-;
+EOL;
 
     $text .= static::ksk3d_box_footer($page);
 
     return $text;
   }
 
-  static function citygml2DB_check2(){
+  static function citygml2DB_check2()
+  {
     $page = 'citygml2DB_check2';
     $form_id = $_POST["form_id"];
-    ksk3d_console_log("form_id:".$form_id);
-    if (isset($_POST["set_attrib"])){
+    ksk3d_console_log("form_id:" . $form_id);
+    if (isset($_POST["set_attrib"])) {
       $set_attrib = $_POST["set_attrib"];
     } else {
       $set_attrib = [];
@@ -489,47 +516,48 @@ EOL
     $text .= static::ksk3d_box_main($page);
 
     global $wpdb;
-    $tbl_name = $wpdb->prefix .static::$tbl;
+    $tbl_name = $wpdb->prefix . static::$tbl;
     $sql = "SELECT * FROM {$tbl_name} WHERE id = %d;";
     $prepared = $wpdb->prepare($sql, $form_id);
     $rows = $wpdb->get_results($prepared, ARRAY_A);
     $text .= "    <table class=\"ksk3d_style_table_report\">";
-    foreach(static::$field as $list){
-      if ($list['tab']==0){
+    foreach (static::$field as $list) {
+      if ($list['tab'] == 0) {
         $text .= "      <tr><td>{$list['displayName']}</td><td>{$rows[0][$list['dbField']]}</td></tr>";
       }
     }
     $text .= "    </table><br>";
 
-    $text .=<<< EOL
+    $text .= <<< EOL
       <p>属性の設定内容</p>
       <table class="ksk3d_style_table_list wp-list-table widefat striped posts">
         <tr>
-EOL
-;
-    foreach(static::$field_ref as $list){
-      if (($list['tab']==0) or ($list['tab']==$tab)){
-        if ($list['editer']!='hidden'){
-        $text .= "          <th style=\"{$list['th-style']}\">{$list['displayName']}</th>\n";
+EOL;
+    foreach (static::$field_ref as $list) {
+      if (($list['tab'] == 0) or ($list['tab'] == $tab)) {
+        if ($list['editer'] != 'hidden') {
+          $text .= "          <th style=\"{$list['th-style']}\">{$list['displayName']}</th>\n";
         }
       }
     }
     $text .= "        </tr>";
 
-    foreach($set_attrib as $attrib){
+    foreach ($set_attrib as $attrib) {
       $text .= "        <tr>\n";
-      foreach(static::$field_ref as $list){
-        if (($list['tab']==0) or ($list['tab']==$tab)){
-          if ($list['editer']!='hidden'){
-            if (!empty($list['dbField'])){
+      foreach (static::$field_ref as $list) {
+        if (($list['tab'] == 0) or ($list['tab'] == $tab)) {
+          if ($list['editer'] != 'hidden') {
+            if (!empty($list['dbField'])) {
               $m = $list['dbField'];
               $v = $attrib[$list['dbField']];
             } else {
               $m = $list['gmlValue'];
               $v = $attrib[$list['gmlValue']];
             }
-            if ($list['editer']=='disabled="disabled"'){
-              if (mb_strlen($v)>50){$v = mb_substr($v ,0 ,50) ."・・・";}
+            if ($list['editer'] == 'disabled="disabled"') {
+              if (mb_strlen($v) > 50) {
+                $v = mb_substr($v, 0, 50) . "・・・";
+              }
             }
             $text .= "          <td>{$v}</td>\n";
           }
@@ -540,28 +568,25 @@ EOL
 
     $text .= <<<EOL
         </table>
-EOL
-;
+EOL;
     $text .= <<< EOL
       <input type="hidden" name="form_id" value="{$form_id}">
 
-EOL
-;
+EOL;
     $i = 0;
-    foreach($set_attrib as $s){
-      foreach(static::$field_ref as $list){
-        if (($list['tab']==0) or ($list['tab']==$tab)){
-          if (!empty($list['dbField'])){
+    foreach ($set_attrib as $s) {
+      foreach (static::$field_ref as $list) {
+        if (($list['tab'] == 0) or ($list['tab'] == $tab)) {
+          if (!empty($list['dbField'])) {
             $m = $list['dbField'];
           } else {
             $m = $list['gmlValue'];
           }
-          $s[$m] = preg_replace('/\\\'/' ,'\'' ,$s[$m]);
-            $text .= <<< EOL
+          $s[$m] = preg_replace('/\\\'/', '\'', $s[$m]);
+          $text .= <<< EOL
       <input type="hidden" name="set_attrib[{$i}][{$m}]" value="{$s[$m]}">
 
-EOL
-;
+EOL;
         }
       }
       $i++;

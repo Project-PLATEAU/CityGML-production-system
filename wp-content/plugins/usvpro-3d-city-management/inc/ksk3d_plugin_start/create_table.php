@@ -97,6 +97,12 @@
   dbDelta( $sql ); 
 
   $table_name = $wpdb->prefix .KSK3D_TABLE_ATTRIBUTE_TPL_VALUE;
+  
+  // drop処理追加
+  $sql = "DROP TABLE IF EXISTS $table_name;";
+  ksk3d_log($sql);
+  $wpdb->query($sql);
+
   $sql = "CREATE TABLE $table_name (
     id bigint(20) NOT NULL AUTO_INCREMENT,
     user_id bigint(20) UNSIGNED NOT NULL,

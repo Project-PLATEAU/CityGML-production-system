@@ -3,9 +3,11 @@
 
   $sql ="DROP FUNCTION IF EXISTS ksk_SUBSTRING_INDEX;";
   ksk3d_log( "sql:" .$sql );
-  $wpdb->query($sql);
+  $sqlResult = $wpdb->query($sql);
+  ksk3d_log('Drop func result:' . $sqlResult);
 
   $sql =<<<EOL
+DELIMITER //
 CREATE FUNCTION ksk_SUBSTRING_INDEX(str TEXT ,delim TEXT ,count int,item2 int)
   RETURNS TEXT
   DETERMINISTIC READS SQL DATA
@@ -14,11 +16,13 @@ CREATE FUNCTION ksk_SUBSTRING_INDEX(str TEXT ,delim TEXT ,count int,item2 int)
     ELSE RETURN SUBSTRING_INDEX(SUBSTRING_INDEX(str,delim,count),delim,item2);
    END IF;
   END
+DELIMITER ;
 EOL
 ;
   ksk3d_log( "sql:" .$sql );
-  $wpdb->query($sql);
+  $sqlResult = $wpdb->query($sql);
   
+  ksk3d_log('Create func result:' . $sqlResult);
   
   $sql ="DROP FUNCTION IF EXISTS ksk_SUBSTR_COUNT;";
   ksk3d_log( "sql:" .$sql );

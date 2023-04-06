@@ -121,13 +121,17 @@ function ksk3d_chmodTree($dir) {
   return chmod($dir,0777);
 }
 
-function ksk3d_console_log($text){
+function ksk3d_console_log($text)
+{
+  // ログにも出力するように
+  ksk3d_log($text);
   if (empty(get_option('ksk3d_option')['debug'])){return;}
-  $text = json_encode($text);
-  if (preg_match('{'.KSK3D_CONTENTS_PATH.'}i' ,$text)==1){
+  $text = json_encode($text, JSON_UNESCAPED_UNICODE);
+  if (preg_match('{'.KSK3D_CONTENTS_PATH.'}i' ,$text)==1)
+  {
     $text = preg_replace('{'.KSK3D_CONTENTS_PATH.'}i' ,'' ,$text);
   }
-    echo "<script>console.log(". $text .")</script>\n";
+  echo "<script>console.log(". $text .")</script>\n";
 }
 
 function ksk3d_delTree($dir) {
@@ -456,7 +460,7 @@ function ksk3d_format($file){
 
 function ksk3d_get_current_user_id(){
   $userID = get_current_user_id();
-  ksk3d_log("get_current_user_id-".$userID);
+  ksk3d_log("ksk3d_get_current_user_id-".$userID);
   if ($userID == 0) {
     $auth = BAuth::get_instance();
     if ($auth->is_logged_in()){
@@ -470,7 +474,7 @@ function ksk3d_get_current_user_id(){
       $proc_id = getenv("KSK3D_USER_ID");
       if ($proc_id > 0){
         $userID = $proc_id;
-        ksk3d_log("proc_user_id-").$userID;
+        ksk3d_log("proc_user_id-".$userID);
       } else {
         ksk3d_log("Simple Membership not login");
       }
@@ -542,10 +546,33 @@ function ksk3d_get_max_file_id(){
   return $max_file_id;
 }
 
+function ksk3d_log_exception($exception){
+  ksk3d_log(json_encode(array('msg'=>utf8_encode($exception->getMessage())), JSON_UNESCAPED_UNICODE));
+}
+
 function ksk3d_log($text){
   $log = KSK3D_CONT_LOG_PATH ."/ksk3d-".date("Ymd").".log";
-  file_put_contents ($log ,date("Y-m-d H:i:s") ." " .substr($text,0,200) ."\n" ,FILE_APPEND);
-  chmod ($log ,0777);
+  //file_put_contents ($log ,date("Y-m-d H:i:s") ." " .substr($text,0,200) ."\n" ,FILE_APPEND);
+  try
+  {
+    if(is_array($text) || is_object($text))
+    {
+      $showTxt  = json_encode($text, JSON_UNESCAPED_UNICODE);
+    }
+    else
+    {
+      $showTxt = $text;
+    }
+
+    file_put_contents ($log ,date("Y-m-d H:i:s") ." " .$showTxt."\n" ,FILE_APPEND);
+    chmod ($log ,0777);
+  }
+  catch (Exception $ex)
+  {
+    $showTxt = "ksk3d_log() ERROR: ".json_encode(array('msg'=>utf8_encode($ex->getMessage())), JSON_UNESCAPED_UNICODE);
+    file_put_contents ($log ,date("Y-m-d H:i:s") ." " .$showTxt."\n" ,FILE_APPEND);
+    chmod ($log ,0777);
+  }
 }
 
 function ksk3d_mkdir($dr){
@@ -567,7 +594,9 @@ function ksk3d_random_word($length = 8){
     return substr(str_shuffle('1234567890abcdefghijklmnopqrstuvwxyz'), 0, $length);
 }
 
-function ksk3d_realpath($dr){
+function ksk3d_realpath($dr) {
+  // WaterBody関連のコードリストが取れなくなっていたのを修正
+  /*
   $dr2 = $dr;
   foreach(array('/\/\.\//' ,'/\/[^\/]*?\/\.\.\//') as $key){
     while (preg_match($key ,$dr2)==1){
@@ -575,6 +604,17 @@ function ksk3d_realpath($dr){
     }    
   }
   return $dr2;
+  */
+  $drArray = explode('/', $dr);
+  $keys = array_keys($drArray, '..');
+
+  foreach ($keys as $keypos => $key) {
+    array_splice($drArray, $key - ($keypos * 2 + 1), 2);
+  }
+
+  $address = implode('/', $drArray );
+  $address = str_replace('./', '', $address);
+  return $address;
 }
 
 function ksk3d_sprintf_bytes($bytes ,$flg=0){
@@ -609,7 +649,12 @@ function ksk3d_table_2rows($array) {
 
 function ksk3d_upload_dir(){
   $userID = ksk3d_get_current_user_id();
+
+  ksk3d_log("ksk3d_upload_dir: userID = {$userID}");
   if ($userID > 0){
+    // TODO: get_user_metaで値が取れていない可能性あり
+    $userMeta = get_user_meta( $userID, "ksk3d_user_folder", true );
+    ksk3d_log("get_user_meta() result: '{$userMeta}'");
     $dr = KSK3D_CONT_USERS_PATH."/".get_user_meta( $userID, "ksk3d_user_folder", true );
   } else {
     $dr = KSK3D_CONT_GUEST_PATH;
@@ -895,46 +940,51 @@ function ksk3d_zip_Compress($dir, $file, $root="", $flg_del=false){
   }
 }
 
-function ksk3d_zip_extractTo($zipfile ,$extractDir = ""){
+function ksk3d_zip_extractTo($zipfile, $extractDir = "")
+{
+  ksk3d_log("ksk3d_zip_extractTo()");
+  ksk3d_log('$zipfile:' . $zipfile);
+  ksk3d_log('$extractDir: ' . $extractDir);
   $zip = new ZipArchive;
-  if ($extractDir==""){
+  if ($extractDir == "") {
     $extractDir = dirname($zipfile);
+    ksk3d_log('           -> ' . $extractDir);
   }
-  
+
   if ($zip->open($zipfile) === TRUE) {
     $count = $zip->numFiles;
     for ($i = 0; $i < $count; $i++) {
-       $filename1 = $zip->getNameIndex($i);
-        if (substr($filename1, -1, 1) != '/'){
-          break;
-        }
+      $filename1 = $zip->getNameIndex($i);
+      if (substr($filename1, -1, 1) != '/') {
+        break;
+      }
     }
     $zip->extractTo($extractDir);
 
     $file_info1 = pathinfo($filename1);
-    $filename = $filename1; 
-    $dirname = $file_info1['dirname'];  
-    ksk3d_console_log("dirname:".$dirname);
-    $basename = $filename1; 
-    $basename1 = $file_info1['dirname']."/".$file_info1['filename']; 
+    $filename = $filename1;
+    $dirname = $file_info1['dirname'];
+    ksk3d_console_log("dirname:" . $dirname);
+    $basename = $filename1;
+    $basename1 = $file_info1['dirname'] . "/" . $file_info1['filename'];
     $extension = "";
-    if (isset($file_info1['extension'])){
+    if (isset($file_info1['extension'])) {
       $extension = $file_info1['extension'];
     }
-    $filename1 = $extractDir ."/" .$filename1;
-    ksk3d_console_log("basename1:".$basename1);
+    $filename1 = $extractDir . "/" . $filename1;
+    ksk3d_console_log("basename1:" . $basename1);
 
 
-    ksk3d_console_log("count:".$count);
-    if ($count > 1){
+    ksk3d_console_log("count:" . $count);
+    if ($count > 1) {
       for ($i = 0; $i < $count; $i++) {
-        ksk3d_console_log("name:".$zip->getNameIndex($i));
-        ksk3d_console_log("path:".$extractDir."/".$zip->getNameIndex($i));
-        if (is_file($extractDir."/".$zip->getNameIndex($i))){
+        ksk3d_console_log("name:" . $zip->getNameIndex($i));
+        ksk3d_console_log("path:" . $extractDir . "/" . $zip->getNameIndex($i));
+        if (is_file($extractDir . "/" . $zip->getNameIndex($i))) {
           ksk3d_console_log("isfile:true");
           $file_info = pathinfo($zip->getNameIndex($i));
 
-          ksk3d_console_log("dirname:".$file_info['dirname']);
+          ksk3d_console_log("dirname:" . $file_info['dirname']);
           if ($dirname != $file_info['dirname']) {
             $dirname = "*";
             $basename = "*";
@@ -942,12 +992,12 @@ function ksk3d_zip_extractTo($zipfile ,$extractDir = ""){
           }
         }
       }
-      
+
       for ($i = 0; $i < $count; $i++) {
-        if (is_file($extractDir."/".$zip->getNameIndex($i))){
+        if (is_file($extractDir . "/" . $zip->getNameIndex($i))) {
           $file_info = pathinfo($zip->getNameIndex($i));
 
-          if (isset($file_info['extension'])){
+          if (isset($file_info['extension'])) {
             if ($extension != $file_info['extension']) {
               $extension = "*";
               $i = $count;
@@ -955,90 +1005,99 @@ function ksk3d_zip_extractTo($zipfile ,$extractDir = ""){
           }
         }
       }
-      $basename = '*.'.$extension;
+      $basename = '*.' . $extension;
       $basename1 = '*';
-      if ($dirname != "."){
-        $basename = $dirname ."/" .$basename;
-        $basename1 = $dirname ."/" .$basename1;
+      if ($dirname != ".") {
+        $basename = $dirname . "/" . $basename;
+        $basename1 = $dirname . "/" . $basename1;
       }
-      $filename = $extractDir."/".$basename;
+      $filename = $extractDir . "/" . $basename;
     }
-    
+
     $zip->close();
     return array(
       true,
-      'filename1'=>$filename1,
-      'filename'=>$filename,
-      'dirname'=>$dirname,
-      'basename'=>$basename,
-      'basename1'=>$basename1,  
-      'extension'=>$extension,
-      'extractDir'=>$extractDir,  
-      'numFiles'=>$count
+      'filename1' => $filename1,
+      'filename' => $filename,
+      'dirname' => $dirname,
+      'basename' => $basename,
+      'basename1' => $basename1,
+      'extension' => $extension,
+      'extractDir' => $extractDir,
+      'numFiles' => $count
     );
   } else {
     return false;
   }
 }
 
-function ksk3d_zip_extractTo1($zipfile ,$extractDir="" ,$filter="."){
-  if (preg_match('{\..+$}',$filter)==1){
-    $filter = preg_replace('{\+}',".+",
-      preg_replace('{\*}',".*",
-        preg_replace('{(.*)\.([^.]+)$}',"$1\.($2|zip)",
-          $filter
-        )
+function ksk3d_zip_extractTo1($zipfile, $extractDir = "", $filter = ".")
+{
+  if (preg_match('{\..+$}', $filter) == 1) {
+    $filter = preg_replace('{\+}', ".+",
+      preg_replace('{\*}', ".*",
+        preg_replace('{(.*)\.([^.]+)$}', "$1\.($2|zip)", $filter)
       )
     );
   }
-  ksk3d_console_log("ksk3d_zip_extractTo1($zipfile ,$extractDir ,$filter)");
   
-  if (empty($extractDir)){
+  ksk3d_console_log(array(
+    'function' => 'ksk3d_zip_extractTo1',
+    '$zipfile' => $zipfile ,
+    '$extractDir' => $extractDir ,
+    '$filter' => $filter)
+  );
+
+  if (empty($extractDir)) {
     $zipfile_pathinfo = pathinfo($zipfile);
     $extractDir = $zipfile_pathinfo['dirname'];
   }
   $basename1 = false;
   $zip = new ZipArchive;
-  if ($zip->open($zipfile)===true){
+  if ($zip->open($zipfile) === true) {
     $count = $zip->numFiles;
     for ($i = 0; $i < $count; $i++) {
       $basename1 = $zip->getNameIndex($i);
-      ksk3d_console_log("basename1($i):".$basename1);
-      if (substr($basename1, -1, 1) != '/'){
-      if (preg_match('{/codelists/}',$basename1)!=1){
-      if (preg_match('{'.$filter.'}i',$basename1)==1){
-        ksk3d_console_log("zip->extractTo($extractDir ,$basename1)");
-        $zip->extractTo($extractDir ,$basename1);
-        break;
-      }}}
+      ksk3d_console_log("basename1($i):" . $basename1);
+      if (substr($basename1, -1, 1) != '/') {
+        // CityGMLファイルのschemasフォルダなどが先にヒットし、その後の処理が正しく出来ない為、除外対象を追加
+        //if (preg_match('{/codelists/}', $basename1) != 1) {
+        if (preg_match('{/(codelists|metadata|schemas|specification)/}', $basename1) != 1) {
+          if (preg_match('{' . $filter . '}i', $basename1) == 1) {
+            ksk3d_console_log("zip->extractTo($extractDir ,$basename1)");
+            $zip->extractTo($extractDir, $basename1);
+            break;
+          }
+        }
+      }
     }
     $zip->close();
   } else {
     ksk3d_console_log("zip->open:false");
   }
-  
-  $file = $extractDir."/".$basename1;
-  ksk3d_console_log("file1:".$file);
-  if (is_file($file)){
+
+  $file = $extractDir . "/" . $basename1;
+  ksk3d_console_log("file1:" . $file);
+  if (is_file($file)) {
     $userrootdir = ksk3d_userrootdir($file);
     if ($userrootdir != false) {
-      ksk3d_console_log("userrootdir:".$userrootdir);
-      chmod($userrootdir ,0777);
+      ksk3d_console_log("userrootdir:" . $userrootdir);
+      chmod($userrootdir, 0777);
     } else {
-      chmod($file ,0777);
+      chmod($file, 0777);
     }
-    
-    if (preg_match('/\.zip$/',$file)==1){
+
+    if (preg_match('/\.zip$/', $file) == 1) {
       $zip->open($file);
       $file_path = pathinfo($file);
       $extractDir = $file_path['dirname'];
       $basename1 = $zip->getNameIndex(0);
       $zip->extractTo($extractDir);
-      $file = $extractDir."/".$basename1;
+      $file = $extractDir . "/" . $basename1;
       $zip->close();
-      ksk3d_console_log("file2:".$file);
+      ksk3d_console_log("file2:" . $file);
     }
-    
+
     return $file;
   } else {
     return false;
@@ -1046,73 +1105,89 @@ function ksk3d_zip_extractTo1($zipfile ,$extractDir="" ,$filter="."){
 }
 
 
-function ksk3d_zip_fileinfo($zip_file, $flg_del=true) {
-  ksk3d_console_log("ksk3d_zip_fileinfo:".$zip_file);
+function ksk3d_zip_fileinfo($zip_file, $flg_del = true)
+{
   $zip_pathinfo = pathinfo($zip_file);
-  
+
+  // ログ出力
+  ksk3d_console_log(array(
+    'function' => 'ksk3d_zip_fileinfo',
+    '$zip_file' => $zip_file,
+    '$flg_del' => $flg_del,
+    '$zip_pathinfo' => $zip_pathinfo
+    )
+  );
+
   $zip = new ZipArchive;
-  $format=['',''];
-  $ext=['',''];
-  $path=['',''];
-  $name=['',''];
-  $dirname=""; 
-  $filename;  
-  $basename;  
+  $format = ['', ''];
+  $ext = ['', ''];
+  $dirname = '';
+  $filename = null;
+  $basename = null;
   if ($zip->open($zip_file) === TRUE) {
     $count = $zip->numFiles;
-    
+
     $zip_file1 = ksk3d_zip_extractTo1($zip_file);
-    while(preg_match('/\.zip$/' ,$zip_file1)==1){
+    while (preg_match('/\.zip$/', $zip_file1) == 1) {
       $zip_file1 = ksk3d_zip_extractTo1($zip_file1);
     }
-    
-    if (is_file($zip_file1)){
+
+    if (is_file($zip_file1)) {
       $format_ = ksk3d_format($zip_file1);
-      $format = array_merge($format ,array($format_['format']));
-      unlink ($zip_file1);
+      $format = array_merge($format, array($format_['format']));
+      unlink($zip_file1);
     }
 
     for ($i = 0; $i < $count; $i++) {
       $basename1 = $zip->getNameIndex($i);
-      if (substr($basename1, -1, 1) != '/'){
+      if (substr($basename1, -1, 1) != '/') {
         ksk3d_console_log("is_file:true");
-        if (preg_match('{/codelists/}',$basename1)!=1){
-          ksk3d_console_log("basename1:".$basename1);
+        // CityGMLファイルのschemasフォルダのファイルなどが先にヒットし、その後の処理が正しく出来ない事がある為、除外対象を追加
+        //if (preg_match('{/codelists/}', $basename1) != 1) {
+        if (preg_match('{/(codelists|metadata|schemas|specification)/}', $basename1) != 1) {
+          ksk3d_console_log("basename1:" . $basename1);
           $zip->extractTo($zip_pathinfo['dirname'], $basename1);
-          $file1 = $zip_pathinfo['dirname']."/".$basename1;
-          ksk3d_console_log("file1($i):".$file1);
-          if (preg_match('/\.zip$/i',$basename1)==1){
+          $file1 = $zip_pathinfo['dirname'] . "/" . $basename1;
+          ksk3d_console_log("file1($i):" . $file1);
+          if (preg_match('/\.zip$/i', $basename1) == 1) {
             $file1 = ksk3d_zip_extractTo1($file1);
-            $file_info = pathinfo(substr($file1, strlen($zip_pathinfo['dirname'])+1));
+            $file_info = pathinfo(substr($file1, strlen($zip_pathinfo['dirname']) + 1));
           } else {
             $file_info = pathinfo($basename1);
           }
-          
+
           $format_ = ksk3d_format($file1);
-          $format = array_merge($format ,array($format_['format']));
-          $ext = array_merge($ext ,array($file_info['extension']));
-          if (count($ext)>10){$ext = array_unique($ext);}
-          if (empty($dirname)){
+          $format = array_merge($format, array($format_['format']));
+          $ext = array_merge($ext, array($file_info['extension']));
+          if (count($ext) > 10) {
+            $ext = array_unique($ext);
+          }
+          if (empty($dirname)) {
             $dirname = $file_info['dirname'];
           } else {
-            $dirname2 = preg_replace('/\*/' ,'.*' ,$dirname);
-            if (preg_match('{^'.$dirname2.'$}' ,$file_info['dirname'])==0) {
+            $dirname2 = preg_replace('/\*/', '.*', $dirname);
+            if (preg_match('{^' . $dirname2 . '$}', $file_info['dirname']) == 0) {
               $dirname = "*";
             }
           }
           
-          if (!isset($filename)){
+          if (!isset($filename)) {
             $filename = $file_info['filename'];
-            $filename_array = explode('_' ,$filename);
+            $filename_array = explode('_', $filename);
           } else {
-            $filename2 = preg_replace('/\*/' ,'.*' ,$filename);
-            if (preg_match('{'.$filename2.'}' ,$file_info['filename'])==0){
+            $filename2 = preg_replace('/\*/', '.*', $filename);
+            if (preg_match('{' . $filename2 . '}', $file_info['filename']) == 0) {
               $filename = "";
-              $filename_array_ = explode('_' ,$file_info['filename']);
-              for ($i=0; $i<count($filename_array); $i++){
-                if (isset($filename_array_[$i])){
-                  if ($filename_array[$i] != $filename_array_[$i]){$filename_array[$i]="*";}
-                  if ($i>0){$filename .= "_";}
+              $filename_array = [];
+              $filename_array_ = explode('_', $file_info['filename']);
+              for ($i = 0; $i < count($filename_array); $i++) {
+                if (isset($filename_array_[$i])) {
+                  if ($filename_array[$i] != $filename_array_[$i]) {
+                    $filename_array[$i] = "*";
+                  }
+                  if ($i > 0) {
+                    $filename .= "_";
+                  }
                   $filename .= $filename_array[$i];
                 } else {
                   $filename .= "*";
@@ -1121,95 +1196,92 @@ function ksk3d_zip_fileinfo($zip_file, $flg_del=true) {
               }
             }
           }
-          ksk3d_console_log("filename:".$filename);
+          ksk3d_console_log(array(
+            'filename' => $filename,
+            '$filename_array' => $filename_array,
+            '$filename_array_' => $filename_array_,
+            '$file_info' => $file_info
+          ));
         }
       } else {
         ksk3d_console_log("is_file:false");
       }
     }
-    ksk3d_console_log("filename:".$filename);
-    if (is_array($format)){$format = array_unique($format);}
-    if (is_array($ext)){$ext = array_unique($ext);}
-    $format = ksk3d_array_del_val($format ,'');
-    $ext = ksk3d_array_del_val($ext ,'');
-  
-    if (is_array($format)){
-      if (count($format)>1){
-        if (
-          in_array('zip', $format)
-        ){
-          $format = ksk3d_array_del_val($format ,'zip');
-          $ext = ksk3d_array_del_val($ext ,'zip');
+    ksk3d_console_log("filename:" . $filename);
+    if (is_array($format)) {
+      $format = array_unique($format);
+    }
+    if (is_array($ext)) {
+      $ext = array_unique($ext);
+    }
+    $format = ksk3d_array_del_val($format, '');
+    $ext = ksk3d_array_del_val($ext, '');
+
+    if (is_array($format)) {
+      if (count($format) > 1) {
+        if (in_array('zip', $format)) {
+          $format = ksk3d_array_del_val($format, 'zip');
+          $ext = ksk3d_array_del_val($ext, 'zip');
         }
 
-        if (
-          in_array('CityGML', $format)
-          and in_array('CityGML(iur)', $format)
-        ){
-          $format = ksk3d_array_del_val($format ,'CityGML(iur)');
+        if (in_array('CityGML', $format) and in_array('CityGML(iur)', $format)) {
+          $format = ksk3d_array_del_val($format, 'CityGML(iur)');
         }
 
-        if (
-          in_array('gml', $format)
-          and in_array('gml(基盤地図情報)', $format)
-        ){
-          $format = ksk3d_array_del_val($format ,'gml(基盤地図情報)');
+        if (in_array('gml', $format) and in_array('gml(基盤地図情報)', $format)) {
+          $format = ksk3d_array_del_val($format, 'gml(基盤地図情報)');
         }
 
-        if (
-          (
-            in_array('CityGML', $format)
-            or in_array('CityGML(iur)', $format)
-          )
-          and in_array('tif', $format)
-        ){
-          $format = ksk3d_array_del_val($format ,'tif');
-          $ext = ksk3d_array_del_val($ext ,'tif');
+        if ((in_array('CityGML', $format) or in_array('CityGML(iur)', $format)) and in_array('tif', $format)) {
+          $format = ksk3d_array_del_val($format, 'tif');
+          $ext = ksk3d_array_del_val($ext, 'tif');
         }
       }
-      $format = implode(',' ,$format);
+      $format = implode(',', $format);
     }
 
-    if (is_array($ext)){
-      if (count($ext)>1){
-        $ext = ksk3d_array_del_val($ext ,'不明');
+    if (is_array($ext)) {
+      if (count($ext) > 1) {
+        $ext = ksk3d_array_del_val($ext, '不明');
       }
-      if (is_array($ext)){
-        if (count($ext)>1){
+      if (is_array($ext)) {
+        if (count($ext) > 1) {
           $ext = "*";
         } else {
-          $ext = implode(',' ,$ext);
+          $ext = implode(',', $ext);
         }
       } else {
-        $ext = implode(',' ,$ext);
+        $ext = implode(',', $ext);
       }
     }
 
     $basename = $filename;
-    if (!empty($ext)){$basename .= ".".$ext;}
+    if (!empty($ext)) {
+      $basename .= "." . $ext;
+    }
 
     $zipfile_info = pathinfo($zip_file);
-    if ($dirname == '.'){
+    if ($dirname == '.') {
       $dirname = "";
       $extract_filepath = $zipfile_info['dirname'];
     } else {
-      $extract_filepath = $zipfile_info['dirname']."/".$dirname;
+      $extract_filepath = $zipfile_info['dirname'] . "/" . $dirname;
     }
 
     $zip->close();
-    if ($flg_del){
-      ksk3d_delTree($zip_pathinfo['dirname']."/".$zip_pathinfo['filename']);
+    if ($flg_del) {
+      ksk3d_delTree($zip_pathinfo['dirname'] . "/" . $zip_pathinfo['filename']);
     }
-    
+
     return array(
       true,
-      'dirname'=>$dirname,  
-      'filename'=>$filename,  
-      'basename'=>$basename,  
-      'extension'=>$ext,  
-      'format'=>$format,  
-      'extract_filepath'=>$extract_filepath,  
-      'numFiles'=>$count  
+      'dirname' => $dirname,
+      'filename' => $filename,
+      'basename' => $basename,
+      'extension' => $ext,
+      'format' => $format,
+      'extract_filepath' => $extract_filepath,
+      'numFiles' => $count
     );
   } else {
     return false;

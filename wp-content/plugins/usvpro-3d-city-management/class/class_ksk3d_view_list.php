@@ -208,6 +208,10 @@ class ksk3d_view_list{
   
   static function view(){
     static::ksk3d_user_log_1();
+
+    ksk3d_console_log("class_ksk3d_view_list.php post");
+    ksk3d_console_log($_POST);
+
     if (isset($_POST["submit"]["detail"])) {
       return static::detail();
     } else if (isset($_POST["submit"]["edit"])) {
@@ -904,13 +908,16 @@ EOL
     }
 
     $sql = "SELECT {$sql} FROM {$tbl_ref_tbl} a LEFT OUTER JOIN {$tbl_ref_ref} b ON {$tbl_ref_on} WHERE a.user_id={$userID} and a.{$tbl_id_name}={$tbl_id} {$wh} ORDER BY a.id;";
-ksk3d_console_log("sql:".$sql);
+    ksk3d_console_log("sql:".$sql);
     $rows = $wpdb->get_results($sql);
 
+    ksk3d_console_log("SQL Results: count= ".count($rows));
     ksk3d_console_log($rows);
-    if (count($rows)>0){
+    $idx = 0;
+    if (count($rows)>0) {
       foreach($rows as $row) {
         $text .= "<tr>";
+        ksk3d_console_log("Row Values (index:$idx):");
         ksk3d_console_log($row);
         foreach(static::$field_ref as $list){
           if (($list['tab']=='0') or ($list['tab']==$tab)){
@@ -920,6 +927,7 @@ ksk3d_console_log("sql:".$sql);
           }
         }
         $text .= "</tr>";
+        $idx++;
       }
     }
     $text .= "</table>";
@@ -1328,47 +1336,51 @@ EOL
     return $text;
   }
 
-  static function regist_file_up(){
+  static function regist_file_up()
+  {
     $page = 'regist_file_up';
     $form_id = $_POST["form_id"];
-    
+
     $text = static::ksk3d_box_header($page);
 
     $user_id = ksk3d_get_current_user_id();
-    if (get_user_meta($user_id, "ksk3d_token" ,true) == "1"){
+    ksk3d_console_log('Uploaded file info:');
+    ksk3d_console_log($_FILES);
+    
+    if (get_user_meta($user_id, "ksk3d_token", true) == "1") {
 
-      if ($_FILES["upfilename"]["error"]==0){
+      if ($_FILES["upfilename"]["error"] == 0) {
         if (is_uploaded_file($_FILES["upfilename"]["tmp_name"])) {
           $file_id = ksk3d_get_max_file_id();
-          $upload_dir = ksk3d_upload_dir() ."/" .$file_id;
-          if (! file_exists($upload_dir)){
+          $upload_dir = ksk3d_upload_dir() . "/" . $file_id;
+          if (!file_exists($upload_dir)) {
             mkdir($upload_dir);
             chmod($upload_dir, 0777);
           }
-          
-          $upload_file_name = $upload_dir ."/" .$_FILES["upfilename"]["name"];
-          ksk3d_console_log("upload_file_name:".$upload_file_name);
+
+          $upload_file_name = $upload_dir . "/" . $_FILES["upfilename"]["name"];
+          ksk3d_console_log("upload_file_name:" . $upload_file_name);
           if (move_uploaded_file($_FILES["upfilename"]["tmp_name"], $upload_file_name)) {
             chmod($upload_file_name, 0777);
           }
           $message = "ファイルをアップロードしました";
           $upfilename = pathinfo($_FILES["upfilename"]["name"]);
-          
-          if (preg_match('/^zip$/i' ,$upfilename['extension'])==1){
+
+          if (preg_match('/^zip$/i', $upfilename['extension']) == 1) {
             $zip_name = $upfilename['basename'];
-            $zip_file = $upload_dir ."/" .$zip_name;
+            $zip_file = $upload_dir . "/" . $zip_name;
             move_uploaded_file($upload_file_name, $zip_file);
           } else {
-            $zip_name = "dataset_".$file_id.".zip";
-            $zip_file = ksk3d_fileid_zip_Compress($file_id ,true);
+            $zip_name = "dataset_" . $file_id . ".zip";
+            $zip_file = ksk3d_fileid_zip_Compress($file_id, true);
           }
-        
+
           $zip_fileinfo = ksk3d_zip_fileinfo($zip_file, true);
-        
-          update_user_meta($user_id ,"ksk3d_token" ,"2");
+
+          update_user_meta($user_id, "ksk3d_token", "2");
 
           global $wpdb;
-          $tbl_name = $wpdb->prefix .static::$tbl;
+          $tbl_name = $wpdb->prefix . static::$tbl;
           $result = $wpdb->insert(
             $tbl_name,
             array(
@@ -1384,14 +1396,13 @@ EOL
               'registration_date' =>  current_time('mysql')
             )
           );
-          
         } else {
           $message = "ファイルのアップロードが失敗しました";
         }
       } else {
         $message = "ファイルのアップロードが失敗しました";
-        trigger_error("File upload failed:".$_FILES["upfilename"]["error"] ,E_USER_NOTICE);
-        ksk3d_console_log("File upload failed:".$_FILES["upfilename"]["error"]);
+        trigger_error("File upload failed:" . $_FILES["upfilename"]["error"], E_USER_NOTICE);
+        ksk3d_console_log("File upload failed:" . $_FILES["upfilename"]["error"]);
       }
     } else {
       $message = "ファイルは既にアップロードされています";
@@ -1401,7 +1412,7 @@ EOL
 
     $text .= $message;
 
-    $text .= static::ksk3d_box_footer($page ,"" ,"" ,$form_id);
+    $text .= static::ksk3d_box_footer($page, "", "", $form_id);
 
     return $text;
   }
@@ -1514,6 +1525,7 @@ EOL
   }
 
   static function attrib_edit(){
+    ksk3d_console_log('attrib_edit');
     $page = 'attrib_edit';
     $tab = 'attrib_edit';
     $form_id = $_POST["form_id"];
@@ -1726,7 +1738,8 @@ EOL
 
       $i = 0;
       foreach($result as $gml){
-        $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+        //$sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+        $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE \"{$gml['tag_path']}\" like CONCAT('%',tag_name) {$wh};";
         $rows = $wpdb->get_results($sql, ARRAY_A);
         foreach(static::$field_ref as $list){
           if (($list['tab']==0) or ($list['tab']==$tab)){

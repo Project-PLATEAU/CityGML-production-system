@@ -85,8 +85,8 @@ define( 'KSK3D_TABLE_ATTRIB', 'wp_ksk3d_attribute_' );
 
 //実行ファイルのパス
 //citygml-to-3dtiles
-define( 'KSK3D_BIN_CITYGML_TO_3DTILES', '/home/kashika5/.nodebrew/current/bin/citygml-to-3dtiles');
+define( 'KSK3D_BIN_CITYGML_TO_3DTILES', '/usr/local/bin/citygml-to-3dtiles');
 
 //proc
-define( 'KSK3D_BIN_PROC', '/usr/bin/php5.6 kashika5.xsrv.jp/public_html/3dcity/wp-content/plugins/usvpro-3d-city-management/proc/proc.php');
+define( 'KSK3D_BIN_PROC', '/usr/bin/php /var/www/wordpress/wp-content/plugins/usvpro-3d-city-management/proc/procs.php');
 

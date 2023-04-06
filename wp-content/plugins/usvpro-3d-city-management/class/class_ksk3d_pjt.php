@@ -41,6 +41,9 @@ class ksk3d_pjt extends ksk3d_view_list{
   ];
 
   static function view2(){
+    ksk3d_console_log('class_ksk3d_pjt.php::view2');
+    ksk3d_console_log($_POST);
+
     if (isset($_POST["submit"]["detail_ref2"])) {
       return static::detail_ref2();
     } else if (isset($_POST["submit"]["gml2db_set_attrib"])) {
@@ -71,6 +74,8 @@ class ksk3d_pjt extends ksk3d_view_list{
       return static::pre_create_map_check();
     } else if (isset($_POST["submit"]["pre_create_map_exec"])) {
       return static::pre_create_map_exec();
+    } else if (isset($_POST["submit"]["pre_convert_data"])) {
+      return static::pre_convert_data();
     } else if (isset($_POST["submit"]["pre_convert_data_bgexec"])) {
       return static::pre_convert_data_bgexec();
     } else if (isset($_POST["submit"]["pre_setting_style"])) {
@@ -484,7 +489,19 @@ class ksk3d_pjt extends ksk3d_view_list{
     ),array(
       'tab' => 'disp_prj_data',
       'displayName' => '備考',
-      'dbField' => "(CASE WHEN b.file_name REGEXP '^[0-9]{6}_dem_' THEN '起伏は除外されます' ELSE null END)",
+      // 建物以外を除外するように変更
+      //'dbField' => "(CASE WHEN b.file_name REGEXP '^[0-9]{6}_dem_' THEN '起伏は除外されます' ELSE null END)",
+      'dbField' => "(CASE WHEN b.file_name REGEXP '^([0-9]{6}|[\*])_tran_' THEN '道路は除外されます'"
+                       ." WHEN b.file_name REGEXP '^([0-9]{6}|[\*])_luse_' THEN '土地利用は除外されます'"
+                       ." WHEN b.file_name REGEXP '^([0-9]{6}|[\*])_fld_' THEN '洪水浸水想定区域は除外されます'"
+                       ." WHEN b.file_name REGEXP '^([0-9]{6}|[\*])_tnm_' THEN '津波浸水想定は除外されます'"
+                       ." WHEN b.file_name REGEXP '^([0-9]{6}|[\*])_lsld_' THEN '土砂災害警戒区域は除外されます'"
+                       ." WHEN b.file_name REGEXP '^([0-9]{6}|[\*])_urf_' THEN '都市計画区域、区域区分、地域地区は除外されます'"
+                       ." WHEN b.file_name REGEXP '^([0-9]{6}|[\*])_dem_' THEN '起伏は除外されます'"
+                       ." WHEN b.file_name REGEXP '^([0-9]{6}|[\*])_frn_' THEN '都市設備は除外されます'"
+                       ." WHEN b.file_name REGEXP '^([0-9]{6}|[\*])_htd_' THEN '高潮浸水想定区域は除外されます'"
+                       ." WHEN b.file_name REGEXP '^([0-9]{6}|[\*])_ifld_' THEN '内水浸水想定区域は除外されます'"
+                       ." WHEN b.file_name REGEXP '^([0-9]{6}|[\*])_veg_' THEN '植生は除外されます' ELSE null END)",
       'dbField_ref' => 'memo',
       'editer' => 'disabled="disabled"',
       'format' => '%s',
@@ -1482,9 +1499,10 @@ class ksk3d_pjt extends ksk3d_view_list{
         'class' => 'btn-secondary',
       )
     ]
-  ];  
+  ];
 
-  static function regist_file_up(){
+  static function regist_file_up()
+  {
     $page = 'regist_file_up';
     $form_id = $_POST["form_id"];
     $message = "";
@@ -1493,31 +1511,33 @@ class ksk3d_pjt extends ksk3d_view_list{
 
     $text .= static::ksk3d_box_main($page);
 
+    ksk3d_console_log('Uploaded file info:');
+    ksk3d_console_log($_FILES);
 
     $user_id = ksk3d_get_current_user_id();
-    if (get_user_meta($user_id, "ksk3d_token" ,true) == "1"){
+    if (get_user_meta($user_id, "ksk3d_token", true) == "1") {
 
-      if ($_FILES["upfilename"]["error"]==0){
+      if ($_FILES["upfilename"]["error"] == 0) {
         if (is_uploaded_file($_FILES["upfilename"]["tmp_name"])) {
           $file_id = ksk3d_get_max_file_id();
-          $upload_dir = ksk3d_upload_dir() ."/" .$file_id;
-          if (! file_exists($upload_dir)){
+          $upload_dir = ksk3d_upload_dir() . "/" . $file_id;
+          if (!file_exists($upload_dir)) {
             mkdir($upload_dir);
             chmod($upload_dir, 0777);
           }
-          
-          $upload_file_name = $upload_dir ."/" .$_FILES["upfilename"]["name"];
-          ksk3d_console_log("upload_file_name:".$upload_file_name);
+
+          $upload_file_name = $upload_dir . "/" . $_FILES["upfilename"]["name"];
+          ksk3d_console_log("upload_file_name:" . $upload_file_name);
           if (move_uploaded_file($_FILES["upfilename"]["tmp_name"], $upload_file_name)) {
             chmod($upload_file_name, 0777);
           }
           $text .= "ファイルをアップロードしました<br>";
           $file = ksk3d_format($upload_file_name);
-          
-          update_user_meta($user_id ,"ksk3d_token" ,"2");
+
+          update_user_meta($user_id, "ksk3d_token", "2");
 
           global $wpdb;
-          $tbl_name = $wpdb->prefix .KSK3D_TABLE_DATA;
+          $tbl_name = $wpdb->prefix . KSK3D_TABLE_DATA;
           $result = $wpdb->insert(
             $tbl_name,
             array(
@@ -1531,10 +1551,10 @@ class ksk3d_pjt extends ksk3d_view_list{
               'registration_date' =>  current_time('mysql'),
             )
           );
- 
-          if ($file['format']=='zip'){
+
+          if ($file['format'] == 'zip') {
             global $wpdb;
-            $tbl_name = $wpdb->prefix .static::$tbl;
+            $tbl_name = $wpdb->prefix . static::$tbl;
             $sql = "SELECT * FROM {$tbl_name} WHERE id = %d;";
             $prepared = $wpdb->prepare($sql, $form_id);
             $rows = $wpdb->get_results($prepared, ARRAY_A);
@@ -1555,7 +1575,6 @@ class ksk3d_pjt extends ksk3d_view_list{
               5,
               1
             );
-
           } else {
             $message = "ファイルはzipではありません、処理を中止します";
           }
@@ -1571,7 +1590,7 @@ class ksk3d_pjt extends ksk3d_view_list{
 
     $text .= $message;
 
-    $text .= static::ksk3d_box_footer($page ,"" ,"" ,$form_id);
+    $text .= static::ksk3d_box_footer($page, "", "", $form_id);
 
     return $text;
   }
@@ -1656,14 +1675,15 @@ EOL
     return $text;
   }
 
-  static function gml2db_set_attrib($flg_file=0){
+  static function gml2db_set_attrib($flg_file = 0)
+  {
     $page = 'gml2db_set_attrib';
-    ksk3d_console_log("page:".$page);
+    ksk3d_console_log("page:" . $page);
     $tab = 'gml2db_set_attrib';
     $parrent_id = $_POST["parrent_id"];
     $form_id = $_POST["form_id"];
-    ksk3d_console_log("parrent_id:".$parrent_id);
-    ksk3d_console_log("form_id:".$form_id);
+    ksk3d_console_log("parrent_id:" . $parrent_id);
+    ksk3d_console_log("form_id:" . $form_id);
 
     $text = static::ksk3d_box_header($page);
 
@@ -1673,24 +1693,28 @@ EOL
     $text .= $result[0];
     ksk3d_console_log($result[0]);
     ksk3d_console_log($result[1]);
-    
-    global $wpdb;
-    $file1 = $result[1]['file_path']."/".$result[1]['file_name'];
-    ksk3d_console_log("file:".$file1);
 
-    $text .=<<< EOL
+    global $wpdb;
+    $file1 = $result[1]['file_path'] . "/" . $result[1]['file_name'];
+    ksk3d_console_log("file:" . $file1);
+
+    $text .= <<< EOL
       <table class="ksk3d_style_table_list wp-list-table widefat striped posts">
         <tr>
-EOL
-;
-    foreach(static::$field_ref as $list){
-      if ($list['tab']==$tab){
-        if ($list['editer']!='hidden'){
+EOL;
+    foreach (static::$field_ref as $list) {
+      if ($list['tab'] == $tab) {
+        if ($list['editer'] != 'hidden') {
           $text .= "          <th style=\"{$list['th-style']}\">{$list['displayName']}</th>\n";
         }
       }
     }
     $text .= "        </tr>";
+
+
+    // log追加
+    $logArrayt = array('msg' => 'gml2db_set_attrib $_POST["set_attrib"]', 'data' => $_POST["set_attrib"]);
+    ksk3d_console_log($logArrayt);
 
     if (isset($_POST["set_attrib"])) {
       $set_attrib = $_POST["set_attrib"];
@@ -1698,50 +1722,61 @@ EOL
     } else {
       $set_attrib = [];
 
-      $tbl_data = $wpdb->prefix .KSK3D_TABLE_DATA;
+      $tbl_data = $wpdb->prefix . KSK3D_TABLE_DATA;
       $user_id = ksk3d_get_current_user_id();
       $sql = "select id from {$tbl_data} where user_id={$user_id} and file_id={$result[1]['dataset_id']};";
-      ksk3d_console_log("sql:".$sql);
-      $src_id = ksk3d_fn_db::sel($sql)[0]["id"];
-      if ($flg_file==1) {
+      ksk3d_console_log("sql:" . $sql);
+      $src_id = ksk3d_fn_db::sel($sql)[0]["id"]; //261
+      if ($flg_file == 1) {
         $result = ksk3d_citygml_test_onefile($src_id);
       } else {
         $result = ksk3d_citygml_test_all($src_id);
       }
       $sql = "";
-      foreach(static::$field_ref as $list){
-        if ($list['tab']==$tab){
-          if (!empty($list{'dbField'})){
-            $sql .= ",".$list{'dbField'};
+      foreach (static::$field_ref as $list) {
+        if ($list['tab'] == $tab) {
+          if (!empty($list['dbField'])) {
+            $sql .= ',' . $list['dbField'];
           }
         }
       }
-      $sql_select = substr($sql ,1);
-      $tbl_ref_tbl = $wpdb->prefix .static::$tbl_ref["{$tab}"]['table'];
+      $sql_select = substr($sql, 1);
+      $tbl_ref_tbl = $wpdb->prefix . static::$tbl_ref["{$tab}"]['table'];
       $wh = "";
 
+
+      // log追加
+      $logArrayt = array(
+        'msg' => 'gml2db_set_attrib citygml_test result', 'data' => $result,
+        array('$sql_select' => $sql_select, '$tbl_ref_tbl' => $tbl_ref_tbl)
+      );
+      ksk3d_console_log($logArrayt);
+
       $i = 0;
-      if (!empty($result)){
-        foreach($result as $gml){
-          $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+      if (!empty($result)) {
+        foreach ($result as $gml) {
+          //$sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE tag_name='{$gml['tag_name']}' {$wh};";
+          $sql = "SELECT {$sql_select} FROM {$tbl_ref_tbl} WHERE \"{$gml['tag_path']}\" like CONCAT('%',tag_name) {$wh};";
+          ksk3d_log('get tag name sql:'. $sql);
           $rows = $wpdb->get_results($sql, ARRAY_A);
-          foreach(static::$field_ref as $list){
-            if ($list['tab']==$tab){
-              if (empty($list{'gmlValue'}) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))){
+          ksk3d_log('sql result: '. count($rows));
+          foreach (static::$field_ref as $list) {
+            if ($list['tab'] === $tab) {
+              if (empty($list['gmlValue']) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))) {
                 $m = $list['dbField'];
-                if (count($rows)>0){
+                if (count($rows) > 0) {
                   $v = $rows[0]["{$m}"];
                 } else {
-                  $v = preg_replace('/\[_n%\]/' ,($i+1) ,$list['default']);
+                  $v = preg_replace('/\[_n%\]/', ($i + 1), $list['default']);
                 }
-                if ($m == 'attrib_digit'){
-                  if ($v < strlen($gml['attrib_value'])*2){
-                    $v = round(strlen($gml['attrib_value'])*2 ,-1 ,PHP_ROUND_HALF_UP);
+                if ($m === 'attrib_digit') {
+                  if ($v < strlen($gml['attrib_value']) * 2) {
+                    $v = round(strlen($gml['attrib_value']) * 2, -1, PHP_ROUND_HALF_UP);
                   }
                 }
               } else {
                 $m = $list['gmlValue'];
-                if (isset($gml["{$m}"])){
+                if (isset($gml["{$m}"])) {
                   $v = $gml[$m];
                 } else {
                   $v = "";
@@ -1754,28 +1789,37 @@ EOL
         }
       }
     }
-    
+
+
+    // log追加
+    $logArrayt = array('msg' => 'gml2db_set_attrib $set_attrib', 'data' => $set_attrib);
+    ksk3d_console_log($logArrayt);
+
     $i = 0;
     $text2 = "";
-    foreach($set_attrib as $attrib){
+    foreach ($set_attrib as $attrib) {
       $text .= "        <tr>\n";
-      foreach(static::$field_ref as $list){
-        if ($list['tab']==$tab){
-          if (empty($list{'gmlValue'}) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))){
+      foreach (static::$field_ref as $list) {
+        if ($list['tab'] == $tab) {
+          if (empty($list['gmlValue']) or ((!empty($list['dbField'])) and (empty($gml[$list['gmlValue']])))) {
             $m = $list['dbField'];
             $v = $attrib["{$m}"];
           } else {
             $m = $list['gmlValue'];
             $v = $attrib["{$m}"];
           }
-          $v = preg_replace('/\\\\+\'/' ,'\'' ,$v);
-          if (!empty($list['select'])){
+          $v = preg_replace('/\\\\+\'/', '\'', $v);
+          if (!empty($list['select'])) {
             $text .= "          <td><select name=\"set_attrib[$i][$m]\">\n";
-            $select_option = explode(',' ,$list['select']);
-            if (preg_match('/'.$attrib[$m].'/i' ,$list['select'])==1){
-              foreach($select_option as $s){
-                $test=preg_match('/'.$v.'/i' ,$s);
-                if (preg_match('/'.$v.'/i' ,$s)==1){$tmp=" selected";} else {$tmp="";}
+            $select_option = explode(',', $list['select']);
+            if (preg_match('/' . $attrib[$m] . '/i', $list['select']) == 1) {
+              foreach ($select_option as $s) {
+                $test = preg_match('/' . $v . '/i', $s);
+                if (preg_match('/' . $v . '/i', $s) == 1) {
+                  $tmp = " selected";
+                } else {
+                  $tmp = "";
+                }
                 $text .= "            <option value=\"{$s}\"{$tmp}>{$s}</option>\n";
               }
             } else {
@@ -1783,19 +1827,21 @@ EOL
             }
             $text .= "          </select></td>\n";
           } else {
-            if (isset($list['shortened']) and $list['shortened']==true){
-              if (mb_strlen($v)>53){
-                $v = mb_substr($v ,0 ,50) ."・・・";
+            if (isset($list['shortened']) and $list['shortened'] == true) {
+              if (mb_strlen($v) > 53) {
+                $v = mb_substr($v, 0, 50) . "・・・";
               }
             }
 
             $v_ = $v;
-            if (mb_strlen($v_)>50){$v_ = mb_substr($v_ ,0 ,50) ."・・・";}
+            if (mb_strlen($v_) > 50) {
+              $v_ = mb_substr($v_, 0, 50) . "・・・";
+            }
 
-            if (preg_match('/disabled="disabled"/i' ,$list['editer'])){
+            if (preg_match('/disabled="disabled"/i', $list['editer'])) {
               $text .= "          <td>{$v_}</td>\n";
               $text2 .= "      <input type=\"hidden\" name=\"set_attrib[$i][$m]\" value=\"{$v}\">\n";
-            } else if (!empty($list['editer'])){
+            } else if (!empty($list['editer'])) {
               $text2 .= "      <input type=\"hidden\" name=\"set_attrib[$i][$m]\" value=\"{$v}\">\n";
             } else {
               $text .= "          <td><input type=\"text\" name=\"set_attrib[$i][$m]\" value=\"{$v}\" {$list['editer']}></td>\n";
@@ -1806,7 +1852,7 @@ EOL
       $text .= "        </tr>\n";
       $i++;
     }
-    $text .="
+    $text .= "
         </table>
 ";
 
@@ -1815,10 +1861,9 @@ EOL
       <input type="hidden" name="form_id" value="{$form_id}">
       <input type="hidden" name="set_attrib_ct" value="{$i}">
 {$text2}
-EOL
-;
+EOL;
 
-    $text .= static::ksk3d_box_footer($page ,"" ,"" ,$parrent_id);
+    $text .= static::ksk3d_box_footer($page, "", "", $parrent_id);
 
     return $text;
   }
@@ -2292,7 +2337,7 @@ EOL
         foreach ($targets as $target){
           ksk3d_console_log("target:".$target);
           $target = substr($target ,mb_strlen($row->{'file_path'})+1);
-          
+        
           $ck_result = [];
           $ck_result = ksk3d_logic_check(
             $ck_item,
@@ -2300,9 +2345,7 @@ EOL
             $ck_target_unit,
             $takeover
           );
-          ksk3d_console_log("ck_result");
-          ksk3d_console_log($ck_result);
-          
+
           if (preg_match('/^[0-9]+$/' ,$ck_result[0])){
             $rslt_err += $ck_result[0];
             $rslt_err_mes .= substr($row->{'file_path'}."/".$target ,strlen($upload_dir)+1) ."\n" .$ck_result[1];
@@ -2435,6 +2478,11 @@ EOL
   }
 
   static function disp_prj_ckresult($pjt_id ,$tab=""){
+    ksk3d_log('主題図設定画面 disp_prj_ckresult');
+
+    ksk3d_log('static::$tbl_ref');
+    ksk3d_log(static::$tbl_ref);
+
     $page = 'disp_ckresult_ckmenu_list';
     if ($tab==""){
       $tab = 'ck_visually';
@@ -2560,6 +2608,8 @@ EOL
       $disabled4 = " disabled";
     }
 
+    // pre_convert_dataをpre_convert_data_bgexecに変更
+    // → 上の変更はNG。view2()にpre_convert_dataに関する分を追加するのが正解と思われる。
     $text .= <<<EOL
       <h5>検査準備</h5>
     <div class="ksk3d_pjt_ck_visually_pre">
@@ -2652,6 +2702,16 @@ EOL
     $sql = "SELECT {$sql} FROM {$tbl_ref_tbl} a LEFT OUTER JOIN {$tbl_ref_ref} b ON {$tbl_ref_on} WHERE a.user_id={$userID} and a." .static::$setting['id'] ."={$pjt_id} {$wh} ORDER BY b.file_id;";
     ksk3d_console_log("sql:".$sql);
     $rows = $wpdb->get_results($sql, ARRAY_A);
+    
+    // ログ設置
+    $logArray = array(
+      'function' => 'disp_prj_data',
+      'sql' => $sql,
+      'memo' => 'disp_prj_dataSQL実行結果',
+      'data' => $rows
+    );
+    ksk3d_log($logArray);
+    ksk3d_console_log($logArray);
 
     $text .= "        <tr>\n";
     foreach(static::$field_ref as $list){
@@ -2720,8 +2780,10 @@ EOL
       }
       $text .= "        </tr>";
     
+      ksk3d_log('disp_prj_data_cklist $ck_menus');
+      ksk3d_log($ck_menus);
       foreach($ck_menus as $ck_menu){
-        if ($ck_menu['check_item']=='C04'){
+        if ($ck_menu['check_item']=='C03'){
           $attribs = [
             array(
               'attrib_field' => '1',
@@ -2786,6 +2848,7 @@ EOL
   }
 
   static function pre_create_map(){
+    ksk3d_log("pre_create_map");
     $page = 'pre_create_map';
     $parrent_id = $_POST["parrent_id"];
     $form_id = static::ksk3d_get_form_id($page);
@@ -2877,7 +2940,8 @@ EOL
 
     $result = static::disp_prj_data_cklist($parrent_id);
     $maps = $result[1];
-
+    ksk3d_log('pre_create_map_exec $maps');
+    ksk3d_log($maps);
     $sql = "INSERT INTO {$tbl} (
       user_id,
       pjt_id,
@@ -2938,6 +3002,8 @@ EOL
   }
 
   static function pre_convert_data(){
+    ksk3d_log('pre_convert_data');
+
     $page = 'pre_convert_data';
     $parrent_id = $_POST["parrent_id"];
     $form_id = static::ksk3d_get_form_id($page);
@@ -2961,6 +3027,8 @@ EOL
   }
 
   static function pre_convert_data_bgexec(){
+    ksk3d_log('pre_convert_data_bgexec');
+
     $page = 'pre_convert_data_bgexec';
     $parrent_id = $_POST["parrent_id"];
     $userID = ksk3d_get_current_user_id();
@@ -3043,6 +3111,8 @@ EOL
 
   static function pre_setting_style_exec(){
     $page = 'pre_setting_style_exec';
+    ksk3d_log($page);
+    
     $parrent_id = $_POST["parrent_id"];
     $form_id = static::ksk3d_get_form_id($page);
     $userID = ksk3d_get_current_user_id();
@@ -3059,27 +3129,32 @@ EOL
     $tbl_attribute = $wpdb->prefix .KSK3D_TABLE_ATTRIBUTE;
 
     $result = static::disp_prj_ckresult($pjt_id ,"pre_setting_style");
-    $maps = $result[1];
 
-    foreach($maps as $map){
+    $maps = $result[1];
+    ksk3d_log("static::disp_prj_ckresult maps:");
+    ksk3d_log($maps);
+
+    foreach($maps as $map) {
       $tbl_pjtdata = $wpdb->prefix .KSK3D_TABLE_PJT_DATA;
       $sql = "SELECT dataset_id2 FROM {$tbl_pjtdata} WHERE user_id={$userID} and pjt_id={$pjt_id} and dataset_id={$map['dataset_id']}";
       ksk3d_console_log("sql:".$sql);
       $id2 = $wpdb->get_var($sql);
       $tbl_attrib = KSK3D_TABLE_ATTRIB .$userID ."_" .$id2;
-        if (preg_match('/^属性値によるスタイル/' ,$map['style'])){
+
+      if (preg_match('/^属性値によるスタイル/' ,$map['style'])) {
         $sql = "SELECT DISTINCT({$map['attrib_field']}) as v FROM {$tbl_attrib} ORDER BY v";
         $rows = $wpdb->get_results($sql, ARRAY_A);
-        if (count($rows)>30){
+        if (count($rows)>30) {
           $text .= $map['attrib_name']." の属性値は30種類を超えたため、除外しました。<br>\n";
         } else {
           $color = "{'color':";
           $fill_tra = 1;
-          if (count($rows)>0){
+
+          if (count($rows)>0) {
             $color .= "{'conditions':[";
             
-            for($i=0; $i<count($rows); $i++){
-              if ($i<5){
+            for($i=0; $i<count($rows); $i++) {
+              if ($i<5) {
                 $r = ksk3d_sampleStyles::$color_range[$i]['r'];
                 $g = ksk3d_sampleStyles::$color_range[$i]['g'];
                 $b = ksk3d_sampleStyles::$color_range[$i]['b'];
@@ -3108,7 +3183,7 @@ EOL
           $color .= "}";
           ksk3d_console_log("color:".$color);
         }
-      } else if (preg_match('/^属性の範囲によるスタイル/' ,$map['style'])){
+      } else if (preg_match('/^属性の範囲によるスタイル/' ,$map['style'])) {
         $sql = "SELECT attrib_type FROM {$tbl_attribute} WHERE user_id={$userID} and file_id={$id2} and attrib_field='{$map['attrib_field']}'";
         ksk3d_console_log("sql:".$sql);
 

@@ -88,7 +88,7 @@ var
         if (defined(proxy)) {
             url = proxy.getURL(url);
         }
-
+        
         var promise;
 
         throttleRequests = defaultValue(throttleRequests, true);

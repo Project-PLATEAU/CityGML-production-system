@@ -5,6 +5,7 @@ class ksk3d_fn_proc{
   static function bgexec_proc($id){
     ksk3d_log("ksk3d_fn_proc::bgexec_proc");
     ksk3d_log("id:".$id);
+    ksk3d_log('max_execution_time:'.ini_get('max_execution_time'));
 
     $ksk3d_option = get_option('ksk3d_option');
     $bin = $ksk3d_option['ksk3d_bin_proc'];
@@ -13,16 +14,26 @@ class ksk3d_fn_proc{
     } else {
       $cmd = $bin;
     }
-    $cmd = preg_replace("/( \S+\/)procs\.php /" ,"$1proc.php " ,$cmd);
 
-    $cmd .= "-{$id} {$id}";
-
+    $cmd = preg_replace("/( \S+\/)procs\.php/" ,"$1proc.php" ,$cmd)." {$id} >&2";
 
     $descriptorspec = array(
        0 => array("pipe", "r"),    
        1 => array("pipe", "w"),    
        2 => array("file", "/tmp/error-output.txt", "a")  
     );
+
+    // ログ追加
+    ksk3d_console_log(array(
+      'function' => 'bgexec_proc',
+      '$id' => $id,
+      'max_execution_time' => ini_get('max_execution_time'),
+      '$ksk3d_option' => $ksk3d_option,
+      'proc_open' => array(
+        '$cmd' => $cmd,
+        '$descriptorspec' => $descriptorspec
+      )
+    ));
     
     $process = proc_open($cmd, $descriptorspec, $pipes);
     if (is_resource($process)) {
@@ -47,7 +58,7 @@ class ksk3d_fn_proc{
   }
 
   static function bgexec_procs(){
-    ksk3d_console_log("ksk3d_fn_proc::bgexec_procs");
+    ksk3d_log(__METHOD__."(".__LINE__.")");
     $ksk3d_option = get_option('ksk3d_option');
     $bin = $ksk3d_option['ksk3d_bin_proc'];
     if (empty($bin)){
@@ -56,9 +67,35 @@ class ksk3d_fn_proc{
       $cmd = $bin;
     }
     $cmd .= " &";
+    
+    // ログ追加
+    ksk3d_console_log(array(
+      'function' => 'bgexec_procs',
+      'max_execution_time' => ini_get('max_execution_time'),
+      '$ksk3d_option' => $ksk3d_option,
+      'proc_open' => array(
+        '$cmd' => $cmd,
+      )
+    ));
 
-    ksk3d_console_log("cmd:".$cmd);
-    exec($cmd);
+    $output=null;
+    $retval=null;
+    ksk3d_log(__METHOD__."(".__LINE__."): "."cmd:".$cmd);
+
+    exec($cmd, $output, $retval);
+    if($retval == false)
+    {
+      ksk3d_log(__METHOD__."(".__LINE__."): "."Returned with status FALSE and output:");
+      //ksk3d_log($output);
+    }
+    else{
+      ksk3d_log(__METHOD__."(".__LINE__."): "."Returned with status $retval and output:");
+      //ksk3d_log($output);
+    }
+    
+    ksk3d_console_log(__METHOD__."(".__LINE__."): "."バックグラウンドの処理結果: $retval =======================================\nログ出力:");
+    ksk3d_console_log($output);
+    ksk3d_console_log(__METHOD__."(".__LINE__."): "."バックグラウンドの処理結果 ログEND =======================================");
   }
 
   static function cancel($form_id ,$memo="キャンセルされました" ,$ret=true){
@@ -197,13 +234,15 @@ class ksk3d_fn_proc{
   }
 
   static function execute($id){
-    ksk3d_console_log("ksk3d_fn_proc::execute");
+    ksk3d_log("ksk3d_fn_proc::execute");
     
     global $wpdb;
     $tbl = $wpdb->prefix .static::$tbl;
     $sql = "select * from {$tbl} where id={$id};";
-    ksk3d_console_log($sql);
+    ksk3d_log($sql);
     $process = $wpdb->get_row($sql ,ARRAY_A);
+    ksk3d_log("process:");
+    ksk3d_log(json_encode($process));
 
     putenv("KSK3D_USER_ID=".$process['user_id']);
     $process_var = json_decode($process['process_var'] ,true);

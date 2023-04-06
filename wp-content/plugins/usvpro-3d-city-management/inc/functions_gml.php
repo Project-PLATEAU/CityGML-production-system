@@ -35,6 +35,12 @@ class ksk3d_functions_gml{
           $tag_path = preg_replace('/^.+?\//' ,'.//' ,$attrib['tag_path']);
           $geom = $xpath->query($tag_path .'//gml:outerBoundaryIs//gml:coordinates' ,$featureMember);
 
+          ksk3d_console_log(array(
+            'function' => __FUNCTION__,
+            '$attrib[\'tag_path\']' => $attrib['tag_path'],
+            '$tag_path' => $tag_path,
+            '$geom count' => count($geom)
+          ));
           $zmin = "";
           $zmax = "";
           $zmin1 = "";
@@ -130,6 +136,13 @@ class ksk3d_functions_gml{
   }
 
   static function internal($file1 ,$new_id ,$set_attrib ,$dmy ,$sw_header){
+    ksk3d_console_log(array(
+      'function'=>__FUNCTION__,
+      '$file1'=>$file1,
+      '$new_id'=>$new_id,
+      '$set_attrib'=>$set_attrib,
+      '$sw_header'=>$sw_header
+    ));
     $user_id = ksk3d_get_current_user_id();  
     if ($sw_header==1){
       ksk3d_DB_create_attrib(
@@ -199,18 +212,19 @@ class ksk3d_functions_gml{
     return true;
   }
 
-  static function test($filename){
-    if (preg_match('/\*/' ,$filename)==1){
-      foreach(glob($filename) as $f) {
+  static function test($filename)
+  {
+    if (preg_match('/\*/', $filename) == 1) {
+      foreach (glob($filename) as $f) {
         if (is_file($f)) {
           $filename = $f;
           break 1;
         }
       }
     }
-    
-    ksk3d_console_log("filename:".$filename);
-    if (!file_exists($filename)){
+
+    ksk3d_console_log("filename:" . $filename);
+    if (!file_exists($filename)) {
       ksk3d_console_log("file is not found.");
       return false;
     }
@@ -226,43 +240,58 @@ class ksk3d_functions_gml{
 
     $feature = "";
     $items = $featureMember->childNodes;
-    for ($i = 0; $i < $items->length; $i++){
-      if (get_class($items->item($i)) == "DOMElement" ){
+    for ($i = 0; $i < $items->length; $i++) {
+      if (get_class($items->item($i)) == "DOMElement") {
         $feature = $items->item($i);
         break;
       }
     }
-    if (empty($feature)){
+    if (empty($feature)) {
       return false;
     }
+
+    $feature_path = preg_replace('/^(\/.+?\/.+?\/).*/', "$1", $feature->getNodePath());
+    $tag = preg_replace('/^\/.+?\/.+?\//', '', $feature->getNodePath());
+    $path = $feature_path . "" . $tag;
     
-    $feature_path = preg_replace('/^(\/.+?\/.+?\/).*/' ,"$1" ,$feature->getNodePath());
-    $tag = preg_replace('/^\/.+?\/.+?\//' ,'' ,$feature->getNodePath());
-    $path = $feature_path ."".$tag;
+    ksk3d_console_log(array(
+      '$feature_path'=>$feature_path,
+      '$tag'=> $tag,
+      '$path'=> $path
+    ));
+    
 
     $gml_id = $feature->getAttribute("fid");
-    if (!empty($gml_id)){
-      $field = mb_strtolower(substr(preg_replace('/^.+(:|\/)/' ,'' ,$tag) ,0 ,7));
-      if (isset($ct[$field])){$ct[$field]++;} else {$ct[$field]=1;}
+    if(empty($gml_id)) {
+      $gml_id = $feature->getAttribute("gml:id");
+    }
+    
+    if (!empty($gml_id)) {
+      $field = mb_strtolower(substr(preg_replace('/^.+(:|\/)/', '', $tag), 0, 7));
+      if (isset($ct[$field])) {
+        $ct[$field]++;
+      } else {
+        $ct[$field] = 1;
+      }
       $result[] = [
-        'tag_name' => "@gml:id",  
-        'tag_path' => $tag."/@fid",
-        'tag_attrib' => "gml:id",  
-        'field_name' => "gml_id",  
+        'tag_name' => "@gml:id",
+        'tag_path' => $tag . "/@fid",
+        'tag_attrib' => "gml:id",
+        'field_name' => "gml_id",
         'attrib_type' => "",
-        'attrib_name' => "gml_id", 
-        'codelist' => "", 
-        'attrib_value' => $gml_id 
+        'attrib_name' => "gml_id",
+        'codelist' => "",
+        'attrib_value' => $gml_id
       ];
     }
 
     $ct_geom = 0;
     $attributes = $feature->childNodes;
-    foreach ($attributes as $attrib){
-      if (get_class($attrib) == "DOMElement" ){
-        if (preg_match('/:geometryProperty/i',$attrib->getNodePath())==1){
-          $tag_path = preg_replace('/^\/.+?\/.+?\//' ,'' ,$attrib->getNodePath());
-          $tag_name = preg_replace('/^.+\/|.+\:/' ,'' ,$tag_path);
+    foreach ($attributes as $attrib) {
+      if (get_class($attrib) == "DOMElement") {
+        if (preg_match('/:geometryProperty/i', $attrib->getNodePath()) == 1) {
+          $tag_path = preg_replace('/^\/.+?\/.+?\//', '', $attrib->getNodePath());
+          $tag_name = preg_replace('/^.+\/|.+\:/', '', $tag_path);
           $result[] = [
             'tag_name' => $tag_name,
             'tag_path' => $tag_path,
@@ -270,29 +299,27 @@ class ksk3d_functions_gml{
             'attrib_type' => "GEOMETRY",
             'attrib_name' => "空間データ",
             'codelist' => "",
-            'attrib_value' => $attrib->nodeValue 
+            'attrib_value' => $attrib->nodeValue
           ];
         } else {
-          $result = array_merge($result ,ksk3d_citygml_getattrib($xpath->query($attrib->getNodePath())));
+          $result = array_merge($result, ksk3d_citygml_getattrib($xpath->query($attrib->getNodePath())));
         }
       }
     }
 
-    for($i=0;$i<count($result);$i++){
-      $result[$i]['tag_name'] = preg_replace('/^.+\:/' ,'' ,$result[$i]['tag_name']); 
-      if (isset($ct[$result[$i]['field_name']])){
+    for ($i = 0; $i < count($result); $i++) {
+      $result[$i]['tag_name'] = preg_replace('/^.+\:/', '', $result[$i]['tag_name']);
+      if (isset($ct[$result[$i]['field_name']])) {
         $ct[$result[$i]['field_name']]++;
       } else {
         $ct[$result[$i]['field_name']] = 1;
       }
-      if ($ct[$result[$i]['field_name']]>1){
+      if ($ct[$result[$i]['field_name']] > 1) {
         $result[$i]['field_name'] .= $ct[$result[$i]['field_name']];
       }
     }
 
     return $result;
-
-
   }
 
 }

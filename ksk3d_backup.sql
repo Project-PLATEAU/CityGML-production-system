@@ -265,7 +265,7 @@ INSERT INTO `wp_posts`(`ID`,`post_author`,`post_date`,`post_date_gmt`,`post_cont
 <!-- /wp:paragraph -->
 
 <!-- wp:file {"id":1106,"href":"https://【KSK3D_BK_RPC_SITESTRING】/wp-content/uploads/2021/01/User-Guide.zip","showDownloadButton":false} -->
-<div class="wp-block-file"><a href="https://【KSK3D_BK_RPC_SITESTRING】/wp-content/uploads/2021/01/User-Guide.zip">User-Guide（10.8MB）</a></div>
+<div class="wp-block-file"><a href="https://【KSK3D_BK_RPC_SITESTRING】/wp-content/uploads/2021/01/User-Guide.zip">User-Guide（14.3MB）</a></div>
 <!-- /wp:file -->
 
 <!-- wp:paragraph -->

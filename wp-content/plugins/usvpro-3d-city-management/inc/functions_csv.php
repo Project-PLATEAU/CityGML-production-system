@@ -94,8 +94,10 @@ class ksk3d_functions_csv{
     $header_array = explode(',' ,$header);
     $sample_array = explode(',' ,$sample);
     for($i=0; $i<count($header_array); $i++){
-      $header_array[$i] = preg_replace('/\'|\"/' ,'' ,$header_array[$i]);
-      $sample_array[$i] = preg_replace('/\'|\"/' ,'' ,$sample_array[$i]);
+      //$header_array[$i] = preg_replace('/\'|\"/' ,'' ,$header_array[$i]);
+      $header_array[$i] = preg_replace('/\'|\"|\r|\n/' ,'' ,$header_array[$i]);
+      //$sample_array[$i] = preg_replace('/\'|\"/' ,'' ,$sample_array[$i]);
+      $sample_array[$i] = preg_replace('/\'|\"|\r|\n/' ,'' ,$sample_array[$i]);
       $field = mb_strtolower(substr(preg_replace('/:/' ,'_' ,$header_array[$i]) ,0 ,7));
 
       $result[] = [
